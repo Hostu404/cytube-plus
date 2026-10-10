@@ -773,12 +773,30 @@
       return;
     }
     scrim.style.display = "";
+    // Scrolled down, the video slides up under CyTube's top bar, which stays
+    // put: the clear part stops at the bar, so the bar stays dimmed too.
+    const top = Math.max(r.top, topBarBottom());
     scrim.style.left = r.left + "px";
-    scrim.style.top = r.top + "px";
+    scrim.style.top = top + "px";
     scrim.style.width = r.width + "px";
-    scrim.style.height = r.height + "px";
-    // The same corners as the video (the Polished look rounds them).
-    scrim.style.borderRadius = getComputedStyle(box).borderRadius;
+    scrim.style.height = Math.max(0, r.bottom - top) + "px";
+    // The same corners as the video (the Polished look rounds them), but
+    // square at the top where the bar cuts it off.
+    const cs = getComputedStyle(box);
+    scrim.style.borderRadius = top > r.top
+      ? `0 0 ${cs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}`
+      : cs.borderRadius;
+  }
+
+  // The bottom edge of CyTube's top bar while it's fixed to the top of the
+  // window (0 if it isn't: a channel or layout can make it scroll away).
+  function topBarBottom() {
+    const bar = document.querySelector(".navbar-fixed-top");
+    if (!bar) return 0;
+    const position = getComputedStyle(bar).position;
+    if (position !== "fixed" && position !== "sticky") return 0;
+    const b = bar.getBoundingClientRect();
+    return b.height > 0 && b.top <= 1 ? b.bottom : 0;
   }
 
   function setDarkness(alpha, ms, easing) {

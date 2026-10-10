@@ -2,6 +2,9 @@
 
 A Firefox add-on that brings some features to cytu.be. Unofficial.
 
+## Screenshots
+<img width="1280" height="800" alt="cytube-plus-screenshot" src="https://github.com/user-attachments/assets/767a1018-99a8-4701-8056-99910767f27a" />
+
 ## Features
 
 - **Polished look**: the video, the buttons under it, the playlist, the
@@ -61,9 +64,14 @@ it's allowed on cytu.be.
 
 Needs Firefox 140 or newer (desktop) or 142 (Android).
 
-## Working on it
+## Installing from the source code
 
-To try changes without installing, open `about:debugging#/runtime/this-firefox`
-in Firefox, click **Load Temporary Add-on…** and pick `manifest.json` in
-this folder. It's removed when Firefox closes. Publishing a new version:
-see `AMO-LISTING.md`.
+This loads the add-on straight from this repository, without Mozilla's
+signing. Firefox removes it again when it closes, so it has to be loaded
+again each time Firefox starts.
+
+1. On this repository's page, click **Code → Download ZIP**, and extract
+   the zip.
+2. In Firefox, open `about:debugging#/runtime/this-firefox`.
+3. Click **Load Temporary Add-on…** and pick `manifest.json` in the
+   extracted folder.

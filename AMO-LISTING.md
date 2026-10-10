@@ -44,7 +44,7 @@ Niconico-style comments for cytu.be. Unofficial.
 
 **Description:**
 
-Adds a few things to CyTube (cytu.be) channels, from the CyTube Android app:
+Adds a few things to CyTube (cytu.be) channels:
 
 - Polished look: the chat, playlist, poll and video player become rounded,
   tidier cards. The rest of the page is left alone, and a channel's own

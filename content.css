@@ -27,7 +27,7 @@
 }
 
 /* Size, glow and emote sizes are set per comment by content.js, scaled to
-   the video like the app's. */
+   the video. */
 .cp-nico-comment {
   position: absolute !important;
   left: 0 !important;
@@ -83,13 +83,12 @@
   cursor: pointer;
 }
 
-/* Mentions and PMs, highlighted like the app: a soft tint behind the
-   message in the app's own colours (its blue for a message that mentions
-   you, its amber for a private message), rounded, with a little room
-   around the text. CyTube itself decides which messages mention you (it
-   marks them .nick-highlight, by the same rule the app copies) and runs
-   the PM windows; this only changes how both look, and on purpose goes
-   over the theme's and the channel's own highlight. */
+/* Mentions and PMs, highlighted: a soft tint behind the message (blue for
+   a message that mentions you, amber for a private message), rounded,
+   with a little room around the text. CyTube itself decides which
+   messages mention you (it marks them .nick-highlight) and runs the PM
+   windows; this only changes how both look, and on purpose goes over the
+   theme's and the channel's own highlight. */
 .cytube-plus-highlight #messagebuffer > div.nick-highlight {
   padding: 4px 8px;
   border-radius: 8px;

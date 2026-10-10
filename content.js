@@ -1,18 +1,17 @@
-// CyTube Plus: the features of the CyTube Android app that the website
-// doesn't already have, and a tidier look. Runs on every cytu.be channel page.
+// CyTube Plus: a few extra features and a tidier look for cytu.be. Runs on
+// every cytu.be channel page.
 //
 //  - Polished look: the video, its buttons, playlist, poll and chat as
 //    rounded cards (see polished-css.js).
-//  - Coloured names: each name in chat gets its own colour (the same one
-//    the app gives it), over any colour the channel's CSS gives names;
-//    staff keep their rank colours, as in the app.
-//  - Niconico comments: new chat messages fly across the video, with the
-//    app's timing, lanes and flood limits.
+//  - Coloured names: each name in chat gets its own colour, over any
+//    colour the channel's CSS gives names; staff keep their rank colours.
+//  - Niconico comments: new chat messages fly across the video in lanes,
+//    with limits for when chat floods.
 //  - Lights down: dims everything around the video; a click outside it
 //    lifts the dark a little for a few seconds.
 //  - Click a name in chat to reply, or an emote to post the same one.
-//  - Mentions and PMs highlighted the way the app does (content.css); how
-//    PMs work is left to CyTube.
+//  - Mentions and PMs highlighted (content.css); how PMs work is left to
+//    CyTube.
 //
 // It does nothing at all on blacklisted channels (the blacklist is edited
 // in the toolbar popup, and starts out with the Kinoplex).
@@ -161,13 +160,14 @@
 
   // ---- coloured names -------------------------------------------------------
 
-  // The app's palette: soft colours that read on a dark background.
+  // The palette: soft colours that read on a dark background.
   const PALETTE = ["#8ab4f8", "#f28b82", "#fdd663", "#81c995", "#fcad70", "#c58af9", "#78d9ec", "#ff8bcb"];
   const colourCache = new Map();
   const ourColour = new WeakMap();   // name -> the colour this gave it
   let chatBackground = null;
 
-  // Java's String.hashCode, so a name gets the same colour here as in the app.
+  // A simple string hash (Java's String.hashCode), so a name always gets the
+  // same colour.
   function javaHash(s) {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
@@ -210,7 +210,7 @@
   }
 
   // Lightened (on a dark chat) or darkened (on a light one) just enough to
-  // read: 3:1 contrast, like the app.
+  // read: 3:1 contrast.
   function readable(hex, bg) {
     let c = hexToRgb(hex);
     const toward = luminance(bg) < 0.4 ? 255 : 0;
@@ -241,8 +241,7 @@
     return [...div.classList].some((c) => c.startsWith("chat-msg-\\$") || c.startsWith("server-msg"));
   }
 
-  // Like the app, the colour goes over whatever the channel's CSS gives
-  // names (inline and !important, so even a channel's !important rule gives
+  // The colour goes over whatever the channel's CSS gives names (inline and !important, so even a channel's !important rule gives
   // way). Staff and guests keep their rank colour, and site-admin flair is
   // a label of its own. A name a channel's script has coloured itself, on
   // the spot (a "pick your name colour" feature, say), keeps that colour.
@@ -284,42 +283,37 @@
 
   // ---- Niconico comments ----------------------------------------------------
   //
-  // The app's overlay (NekoChatOverlay in Panels.kt), number for number:
-  // every comment crosses in the same 3.755 s (so a long one moves faster),
+  // Every comment crosses in the same 3.755 s (so a long one moves faster),
   // unless that would pass the speed limit, which stretches a very long one
-  // out to as much as 11.265 s; lanes are 34 high, at most 12, picked the
-  // same way (an empty lane round-robin, else the lane whose last comment is
-  // furthest along, never one where the new comment would run into it);
-  // 75 ms between comments setting off; 24 between comments in a lane; text
-  // 20 bold, emotes 28 (56 when a message is only emotes).
+  // out to as much as 11.265 s. Lanes are 34 high, at most 12, picked so
+  // comments spread out (an empty lane round-robin, else the lane whose last
+  // comment is furthest along, never one where the new comment would run
+  // into it); 75 ms between comments setting off; 24 between comments in a
+  // lane; text 20 bold, emotes 28 (56 when a message is only emotes).
   //
-  // The app's sizes are in dp for a phone, where 12 lanes of 34 fill the
-  // video in landscape. A video on a computer is usually taller, so every
-  // size (and the speed limit) grows with it, by the same factor, until the
-  // 12 lanes fill it the same way; a smaller one keeps the app's sizes.
+  // Those sizes are for a small video, which 12 lanes of 34 fill. A bigger
+  // video makes every size (and the speed limit) grow with it, by the same
+  // factor, until the 12 lanes fill it the same way.
   //
-  // Flood limits, also the app's: turning it on replays the last 5 messages;
-  // at most 20 at a time from a burst of chat, and at most 30 waiting to fly
-  // (the oldest are dropped first, so it stays close to the chat).
+  // Flood limits: turning it on replays the last 5 messages; at most 20 at a
+  // time from a burst of chat, and at most 30 waiting to fly (the oldest are
+  // dropped first, so it stays close to the chat).
   //
-  // One difference: the app saves up what's said while it's in the
-  // background and flies it when you come back. Here nothing waits while
-  // the tab is hidden (another tab in front, or the window minimised): what
-  // was said meanwhile is in the chat, and only what's said once you're
-  // back flies. (A window that's only not in focus, say on another screen,
-  // isn't hidden: comments keep flying there.)
+  // Nothing waits while the tab is hidden (another tab in front, or the
+  // window minimised): what was said meanwhile is in the chat, and only
+  // what's said once you're back flies. (A window that's only not in focus,
+  // say on another screen, isn't hidden: comments keep flying there.)
 
   const NEKO_BASELINE_DURATION_MS = 3755;
   const NEKO_MAX_DURATION_MS = 11265;
-  // The app's limit is 0.95634 pixels a millisecond on a phone, where a dp
-  // is 2.625 pixels: in the app's own units, 0.3643 dp a millisecond.
-  const NEKO_MAX_SPEED_DP_PER_MS = 0.95634 / 2.625;
+  // The speed limit at the base size, in pixels a millisecond.
+  const NEKO_MAX_SPEED = 0.36432;
   const NEKO_MIN_GAP = 24;
   const NEKO_SPAWN_STAGGER_MS = 75;
   const NEKO_LANE_HEIGHT = 34;
   const NEKO_MAX_LANES = 12;
   const NEKO_TEXT_SIZE = 20;
-  // The app's glow: a 6 pixel shadow blur on the phone, about 3 dp here.
+  // The black glow round the text: a 3 pixel blur at the base size.
   const NEKO_GLOW = 3;
   const NEKO_EMOTE_HEIGHT = 28;
   const NEKO_SOLO_EMOTE_HEIGHT = 56;
@@ -358,7 +352,7 @@
   }
 
   // Fullscreen and resizing: each comment carries on from the same point of
-  // its journey, at the new size, across the new width, as the app's do.
+  // its journey, at the new size, across the new width.
   function relayout() {
     if (!nicoLayer) return;
     const g = geometry(nicoLayer);
@@ -468,7 +462,7 @@
     });
   }
 
-  // The app's lane rule (NekoLanes.kt laneWaitMs): how long until a comment
+  // The lane rule: how long until a comment
   // [width] wide moving at [speed] may enter a lane whose newest comment is
   // [last]. It must have moved [gap] clear of the edge, and if the new one is
   // faster, be gone before the new one could reach it.
@@ -565,7 +559,7 @@
         prepare(item, layer, g.scale);
         const distance = g.width + item.width;
         const duration = Math.min(NEKO_MAX_DURATION_MS, Math.max(NEKO_BASELINE_DURATION_MS,
-          Math.round(distance / (NEKO_MAX_SPEED_DP_PER_MS * g.scale))));
+          Math.round(distance / (NEKO_MAX_SPEED * g.scale))));
         const speed = distance / duration;
 
         // The animations' own clock, so a comment is exactly where the lanes
@@ -703,7 +697,7 @@
 
   // ---- click to reply, click an emote --------------------------------------
 
-  // Like the app: a name drops "name: " into the message box, an emote drops
+  // A name drops "name: " into the message box, an emote drops
   // its code, at the cursor (or the end, if the box wasn't in use), with a
   // space before it when it would otherwise run into the word before.
   // Nothing is sent.

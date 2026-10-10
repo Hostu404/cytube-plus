@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "CyTube Plus",
+  "version": "0.6.2",
+  "description": "A tidier look, coloured names, mention highlights, lights down and Niconico-style comments for cytu.be. Unofficial.",
+  "homepage_url": "https://github.com/Hostu404/cytube-plus",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cytube-plus@hostu404",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://cytu.be/*"
+  ],
+  "action": {
+    "default_title": "CyTube Plus",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "32": "icons/icon.svg"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://cytu.be/r/*"
+      ],
+      "js": [
+        "polished-css.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}

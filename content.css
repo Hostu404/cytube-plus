@@ -1,0 +1,108 @@
+/* Everything here styles the add-on's own elements, so a little !important
+   on how they're laid out keeps a channel's broad CSS (say, every div in the
+   video area) from pushing them around. None of it reaches the channel's
+   own elements, except the pointer over names and emotes, which has no
+   weight at all, so a channel's own cursor wins. */
+
+/* Lights down: a box over the video whose shadow darkens everything else.
+   Above the navbar (1030), below Bootstrap's dialogs (1040+), so an options
+   or emote window opened while dimmed shows in full. Never takes clicks. */
+.cp-scrim {
+  position: fixed !important;
+  z-index: 1035 !important;
+  pointer-events: none !important;
+  box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0);
+}
+
+/* Niconico comments: inside the video box, so they're clipped to the video,
+   never dimmed, and show in CyTube's fullscreen too. */
+.cp-nico {
+  position: absolute !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Size, glow and emote sizes are set per comment by content.js, scaled to
+   the video like the app's. */
+.cp-nico-comment {
+  position: absolute !important;
+  left: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #fff;
+  will-change: transform;
+}
+
+.cp-nico-comment img {
+  width: auto !important;
+  max-height: none !important;
+  max-width: none !important;
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+/* The add-on's own buttons: a little apart from CyTube's. */
+#cytube-plus-controls {
+  margin-right: 4px;
+}
+
+/* Their icons, centred like CyTube's own, and never making a button taller. */
+.cp-icon {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin: -2px 0;
+  vertical-align: middle;
+  position: relative;
+  top: -2px;
+}
+
+/* The Niconico button's square: an outline when off, filled when on. */
+.cp-square {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid currentColor;
+  vertical-align: -1px;
+}
+
+.cp-square.cp-on {
+  background: currentColor;
+}
+
+/* Names and emotes in chat can be clicked (to reply, to post the emote). */
+:where(.cytube-plus-click #messagebuffer strong.username,
+       .cytube-plus-click #messagebuffer img.channel-emote) {
+  cursor: pointer;
+}
+
+/* Mentions and PMs, highlighted like the app: a soft tint behind the
+   message in the app's own colours (its blue for a message that mentions
+   you, its amber for a private message), rounded, with a little room
+   around the text. CyTube itself decides which messages mention you (it
+   marks them .nick-highlight, by the same rule the app copies) and runs
+   the PM windows; this only changes how both look, and on purpose goes
+   over the theme's and the channel's own highlight. */
+.cytube-plus-highlight #messagebuffer > div.nick-highlight {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background-color: rgba(127, 178, 229, 0.16);
+}
+
+.cytube-plus-highlight .pm-buffer > div {
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background-color: rgba(210, 167, 107, 0.16);
+}
+
+.cytube-plus-highlight .pm-buffer > div strong.username {
+  color: #d2a76b;
+}

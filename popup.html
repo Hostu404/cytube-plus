@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CyTube Plus</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon.svg" alt="" width="28" height="28">
+    <div>
+      <h1>CyTube Plus</h1>
+      <p id="version" class="muted"></p>
+    </div>
+  </header>
+
+  <section id="here" hidden>
+    <label class="row">
+      <span class="text">
+        <span class="title">On for this channel</span>
+        <span class="hint" id="here-name"></span>
+      </span>
+      <input type="checkbox" role="switch" id="here-toggle">
+    </label>
+  </section>
+
+  <section>
+    <h2>Look</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Polished look</span>
+        <span class="hint">Rounded, tidier chat, playlist, poll and player. A channel's own style still comes first.</span>
+      </span>
+      <input type="checkbox" role="switch" id="polished">
+    </label>
+    <label class="row">
+      <span class="text">
+        <span class="title">Coloured names</span>
+        <span class="hint">Gives everyone in chat their own name colour, over the channel's. Staff keep their rank colours.</span>
+      </span>
+      <input type="checkbox" role="switch" id="colourNames">
+    </label>
+  </section>
+
+  <section>
+    <h2>Video</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Niconico comments</span>
+        <span class="hint">New chat messages scroll across the video. The square button under the video does the same.</span>
+      </span>
+      <input type="checkbox" role="switch" id="nico">
+    </label>
+    <label class="row">
+      <span class="text">
+        <span class="title">Lights down button</span>
+        <span class="hint">Adds a bulb under the video that dims the rest of the page.</span>
+      </span>
+      <input type="checkbox" role="switch" id="lightsButton">
+    </label>
+  </section>
+
+  <section>
+    <h2>Chat</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Highlight mentions and PMs</span>
+        <span class="hint">Messages that mention you, and private messages, stand out like in the app.</span>
+      </span>
+      <input type="checkbox" role="switch" id="highlights">
+    </label>
+    <label class="row">
+      <span class="text">
+        <span class="title">Click names and emotes</span>
+        <span class="hint">Click a name to reply to someone, or an emote to add it to your message.</span>
+      </span>
+      <input type="checkbox" role="switch" id="clickToInsert">
+    </label>
+  </section>
+
+  <section>
+    <h2>Blacklist</h2>
+    <ul id="off-list"></ul>
+    <p id="off-empty" class="empty" hidden>None: it's on everywhere.</p>
+    <form id="off-add" class="add">
+      <input id="off-input" type="text" placeholder="Channel name or link" aria-label="Channel to blacklist" autocomplete="off" spellcheck="false">
+      <button type="submit">Add</button>
+    </form>
+    <p id="off-error" class="error" hidden></p>
+  </section>
+
+  <footer>
+    <a id="source" class="source" href="https://github.com/Hostu404/cytube-plus">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8.7 16.3 4.4 12l4.3-4.3-1.4-1.4L1.6 12l5.7 5.7zm6.6 0 1.4 1.4 5.7-5.7-5.7-5.7-1.4 1.4 4.3 4.3z"/></svg>
+      View source
+    </a>
+    <p class="muted">Changes apply straight away. Unofficial, not made by CyTube.</p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -47,7 +47,7 @@ What's changed in each version is on the
 
 ## Installing
 
-**From Firefox Add-ons** (recommended: it updates itself)
+**From Firefox Add-ons** (recommended: it updates itself) (Currently awaiting Mozillas approval)
 
 Open https://addons.mozilla.org/firefox/addon/cytube-plus/ in Firefox and
 click **Add to Firefox**. On Android, open the same page in Firefox for

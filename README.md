@@ -2,7 +2,8 @@
 
 A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
 ## Screenshots
-<img width="272" height="924" alt="image" src="https://github.com/user-attachments/assets/59b94d5c-5b75-4f8a-8604-8388722bf0fa" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
+
 
 
 ## Features

@@ -2,6 +2,10 @@
 
 A Firefox add-on that brings some features to cytu.be. Unofficial.
 
+## Screenshots
+<img width="272" height="924" alt="image" src="https://github.com/user-attachments/assets/59b94d5c-5b75-4f8a-8604-8388722bf0fa" />
+
+
 ## Features
 
 - **Polished look**: the video, the buttons under it, the playlist, the
@@ -33,9 +37,6 @@ All the settings are in the toolbar button's popup.
 
 What's changed in each version is on the
 [Releases page](https://github.com/Hostu404/cytube-plus/releases).
-
-## Screenshots
-<img width="320" height="1087" alt="image" src="https://github.com/user-attachments/assets/59b94d5c-5b75-4f8a-8604-8388722bf0fa" />
 
 ## Staying out of the channel's way
 

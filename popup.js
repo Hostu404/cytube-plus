@@ -1,6 +1,13 @@
 // The toolbar popup: the settings, and the blacklist of channels the add-on is off on.
 const api = globalThis.browser ?? globalThis.chrome;
-const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true };
+const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true,
+  nicoSpeed: 100, dim: 90, peekSeconds: 4 };
+// How the sliders' values read.
+const SHOW = {
+  nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
+  dim: (v) => v + "%",
+  peekSeconds: (v) => v + (v === 1 ? " second" : " seconds"),
+};
 const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 const SOURCE = "https://github.com/Hostu404/cytube-plus";
 
@@ -22,7 +29,18 @@ function channelName(text) {
 
 function showSettings(settings) {
   const s = { ...DEFAULTS, ...settings };
-  for (const key of Object.keys(DEFAULTS)) document.getElementById(key).checked = s[key];
+  for (const key of Object.keys(DEFAULTS)) {
+    const input = document.getElementById(key);
+    if (input.type === "checkbox") input.checked = s[key];
+    else showSlider(input, s[key]);
+  }
+  document.getElementById("nico-sliders").classList.toggle("off", !s.nico);
+  document.getElementById("lights-sliders").classList.toggle("off", !s.lightsButton);
+}
+
+function showSlider(input, value) {
+  input.value = value;
+  document.getElementById(input.id + "-value").textContent = SHOW[input.id](Number(value));
 }
 
 function showChannels() {
@@ -69,9 +87,13 @@ api.storage.onChanged.addListener((changes, area) => {
 });
 
 for (const key of Object.keys(DEFAULTS)) {
-  document.getElementById(key).addEventListener("change", async (e) => {
+  const input = document.getElementById(key);
+  const valueOf = () => (input.type === "checkbox" ? input.checked : Number(input.value));
+  // A slider's number updates as it moves; it's saved when let go.
+  if (input.type === "range") input.addEventListener("input", () => showSlider(input, input.value));
+  input.addEventListener("change", async () => {
     const { settings } = await api.storage.local.get({ settings: DEFAULTS });
-    await api.storage.local.set({ settings: { ...DEFAULTS, ...settings, [key]: e.target.checked } });
+    await api.storage.local.set({ settings: { ...DEFAULTS, ...settings, [key]: valueOf() } });
   });
 }
 

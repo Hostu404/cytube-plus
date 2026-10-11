@@ -51,13 +51,29 @@
       </span>
       <input type="checkbox" role="switch" id="nico">
     </label>
+    <div class="sliders" id="nico-sliders">
+      <label class="slider">
+        <span class="slider-head"><span>Speed</span><output id="nicoSpeed-value"></output></span>
+        <input type="range" id="nicoSpeed" min="50" max="200" step="25">
+      </label>
+    </div>
     <label class="row">
       <span class="text">
         <span class="title">Lights down button</span>
-        <span class="hint">Adds a bulb under the video that dims the rest of the page.</span>
+        <span class="hint">Adds a bulb under the video that dims the rest of the page. A click outside the video lifts the dark for a moment.</span>
       </span>
       <input type="checkbox" role="switch" id="lightsButton">
     </label>
+    <div class="sliders" id="lights-sliders">
+      <label class="slider">
+        <span class="slider-head"><span>Darkness</span><output id="dim-value"></output></span>
+        <input type="range" id="dim" min="30" max="100" step="5">
+      </label>
+      <label class="slider">
+        <span class="slider-head"><span>Lifts for</span><output id="peekSeconds-value"></output></span>
+        <input type="range" id="peekSeconds" min="1" max="10" step="1">
+      </label>
+    </div>
   </section>
 
   <section>

@@ -15,11 +15,15 @@ A Firefox add-on that brings some features to cytu.be. Unofficial.
 - **Highlights**: messages that mention you, and private messages, stand
   out. CyTube's own PM windows work as usual.
 - **Lights down**: the bulb button under the video dims the rest of the
-  page to 90%. Click outside the video to lift the dark for a few seconds.
+  page (90% by default). Click outside the video to lift the dark for a
+  few seconds. How dark it goes and how long it lifts for can be changed
+  in the toolbar popup.
 - **Niconico comments**: the square button under the video makes new chat
-  messages fly across it.
-  They show in fullscreen too. Nothing is saved up while the tab is
-  hidden: only what's said while you're watching flies.
+  messages fly across it, emotes included, and coloured text like
+  greentext keeps its colour. They show in fullscreen too, and their speed
+  can be changed in the toolbar popup (half to double). Nothing is saved
+  up while the tab is hidden: only what's said while you're watching
+  flies.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. Nothing is sent until you press
   Enter.
@@ -29,6 +33,9 @@ A Firefox add-on that brings some features to cytu.be. Unofficial.
   you're on.
 
 All the settings are in the toolbar button's popup.
+
+What's changed in each version is on the
+[Releases page](https://github.com/Hostu404/cytube-plus/releases).
 
 ## Staying out of the channel's way
 

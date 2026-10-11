@@ -34,6 +34,9 @@
   margin: 0 !important;
   padding: 0 !important;
   white-space: nowrap !important;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
   font-weight: bold;
   line-height: 1.2;
   color: #fff;

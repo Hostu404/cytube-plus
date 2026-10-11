@@ -25,10 +25,14 @@
 
   const api = globalThis.browser ?? globalThis.chrome;
 
-  const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true };
+  const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true,
+    nicoSpeed: 100, dim: 90, peekSeconds: 4 };
   const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, highlights: false, clickToInsert: false };
   // The blacklist: channels it stays off on, until someone takes them off.
   const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
+
+  // A number setting, kept within its range.
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0));
 
   // This channel's name, as in cytu.be/r/<name>.
   const channel = (() => {
@@ -79,6 +83,7 @@
     if (settings.nico && !wasNico) nicoTurnedOn();
     if (!settings.nico) clearNico();
     if (!settings.lightsButton && lightsOn) setLights(false);
+    else if (lightsOn) setDarkness(typing() ? peekLevel() : dimLevel(), 250, "ease-in-out");
   }
 
   // ---- polished look --------------------------------------------------------
@@ -163,7 +168,7 @@
   // The palette: soft colours that read on a dark background.
   const PALETTE = ["#8ab4f8", "#f28b82", "#fdd663", "#81c995", "#fcad70", "#c58af9", "#78d9ec", "#ff8bcb"];
   const colourCache = new Map();
-  const ourColour = new WeakMap();   // name -> the colour this gave it
+  const ourColour = new WeakMap();   // a name in chat -> the colour this gave it
   let chatBackground = null;
 
   // A simple string hash (Java's String.hashCode), so a name always gets the
@@ -212,7 +217,10 @@
   // Lightened (on a dark chat) or darkened (on a light one) just enough to
   // read: 3:1 contrast.
   function readable(hex, bg) {
-    let c = hexToRgb(hex);
+    return readableRgb(hexToRgb(hex), bg);
+  }
+
+  function readableRgb(c, bg) {
     const toward = luminance(bg) < 0.4 ? 255 : 0;
     for (let i = 0; i < 10 && contrast(c, bg) < 3; i++) {
       c = {
@@ -241,10 +249,11 @@
     return [...div.classList].some((c) => c.startsWith("chat-msg-\\$") || c.startsWith("server-msg"));
   }
 
-  // The colour goes over whatever the channel's CSS gives names (inline and !important, so even a channel's !important rule gives
-  // way). Staff and guests keep their rank colour, and site-admin flair is
-  // a label of its own. A name a channel's script has coloured itself, on
-  // the spot (a "pick your name colour" feature, say), keeps that colour.
+  // The colour goes over whatever the channel's CSS gives names (inline and
+  // !important, so even a channel's !important rule gives way). Staff and
+  // guests keep their rank colour, and site-admin flair is a label of its
+  // own. A name a channel's script has coloured itself, on the spot (a "pick
+  // your name colour" feature, say), keeps that colour.
   function colourName(div) {
     if (!(div instanceof HTMLElement) || fromServer(div)) return;
     const strong = div.querySelector(":scope > span:not(.timestamp) > strong.username");
@@ -295,6 +304,9 @@
   // video makes every size (and the speed limit) grow with it, by the same
   // factor, until the 12 lanes fill it the same way.
   //
+  // The speed setting (50-200%, from the popup) scales all of that: at 200%
+  // a comment crosses in half the time, and the speed limit doubles.
+  //
   // Flood limits: turning it on replays the last 5 messages; at most 20 at a
   // time from a burst of chat, and at most 30 waiting to fly (the oldest are
   // dropped first, so it stays close to the chat).
@@ -304,39 +316,50 @@
   // what's said once you're back flies. (A window that's only not in focus,
   // say on another screen, isn't hidden: comments keep flying there.)
 
-  const NEKO_BASELINE_DURATION_MS = 3755;
-  const NEKO_MAX_DURATION_MS = 11265;
+  const NICO_BASELINE_DURATION_MS = 3755;
+  const NICO_MAX_DURATION_MS = 11265;
   // The speed limit at the base size, in pixels a millisecond.
-  const NEKO_MAX_SPEED = 0.36432;
-  const NEKO_MIN_GAP = 24;
-  const NEKO_SPAWN_STAGGER_MS = 75;
-  const NEKO_LANE_HEIGHT = 34;
-  const NEKO_MAX_LANES = 12;
-  const NEKO_TEXT_SIZE = 20;
+  const NICO_MAX_SPEED = 0.36432;
+  const NICO_MIN_GAP = 24;
+  const NICO_SPAWN_STAGGER_MS = 75;
+  const NICO_LANE_HEIGHT = 34;
+  const NICO_MAX_LANES = 12;
+  const NICO_TEXT_SIZE = 20;
   // The black glow round the text: a 3 pixel blur at the base size.
-  const NEKO_GLOW = 3;
-  const NEKO_EMOTE_HEIGHT = 28;
-  const NEKO_SOLO_EMOTE_HEIGHT = 56;
-  const NEKO_CATCHUP_COUNT = 5;
-  const NEKO_MAX_BURST = 20;
-  const NEKO_MAX_QUEUE = 30;
+  const NICO_GLOW = 3;
+  const NICO_EMOTE_HEIGHT = 28;
+  const NICO_SOLO_EMOTE_HEIGHT = 56;
+  // How long a comment waits for an emote image the chat is still loading.
+  const NICO_IMAGE_WAIT_MS = 5000;
+  const NICO_CATCHUP_COUNT = 5;
+  const NICO_MAX_BURST = 20;
+  const NICO_MAX_QUEUE = 30;
 
   let nicoLayer = null;
+  let layerObserver = null;
+  let fontsWatched = false;
   let laneOccupants = new Map();   // lane -> [{ spawnAt, speed, width, clearAt }]
   let nextLaneIndex = 0;
-  const pending = [];              // { div, content, solo, el, width, scale }
-  const active = new Set();        // { el, solo, lane, width, duration, animation, occupant }
+  // Waiting to fly: { div, content, ready, settled, solo, empty, el, width, scale }
+  const pending = [];
+  // Flying: { el, solo, lane, width, duration, animation, occupant }
+  const active = new Set();
   let queued = new WeakSet();      // chat messages already sent to fly
   let draining = false;
   let wakeDrain = null;
 
+  // The speed setting as a factor: 1 is normal.
+  function nicoSpeed() {
+    return clamp(settings.nicoSpeed ?? DEFAULTS.nicoSpeed, 50, 200) / 100;
+  }
+
   function geometry(layer) {
     const width = layer.clientWidth, height = layer.clientHeight;
-    const scale = Math.max(1, height / (NEKO_MAX_LANES * NEKO_LANE_HEIGHT));
-    const laneHeight = NEKO_LANE_HEIGHT * scale;
+    const scale = Math.max(1, height / (NICO_MAX_LANES * NICO_LANE_HEIGHT));
+    const laneHeight = NICO_LANE_HEIGHT * scale;
     // (The small nudge keeps rounding from losing the twelfth lane.)
-    const laneCount = Math.min(NEKO_MAX_LANES, Math.max(1, Math.floor(height / laneHeight + 1e-6)));
-    return { width, height, scale, laneHeight, laneCount, gap: NEKO_MIN_GAP * scale };
+    const laneCount = Math.min(NICO_MAX_LANES, Math.max(1, Math.floor(height / laneHeight + 1e-6)));
+    return { width, height, scale, laneHeight, laneCount, gap: NICO_MIN_GAP * scale };
   }
 
   function ensureNicoLayer() {
@@ -347,7 +370,13 @@
     nicoLayer.className = "cp-nico";
     box.appendChild(nicoLayer);
     laneOccupants = new Map();
-    new ResizeObserver(relayout).observe(nicoLayer);
+    layerObserver?.disconnect();
+    layerObserver = new ResizeObserver(relayout);
+    layerObserver.observe(nicoLayer);
+    if (!fontsWatched && document.fonts) {
+      fontsWatched = true;
+      document.fonts.addEventListener("loadingdone", relayout);
+    }
     return nicoLayer;
   }
 
@@ -361,7 +390,7 @@
       const progress = (c.animation.currentTime || 0) / c.duration;
       sizeComment(c.el, c.solo, g.scale);
       c.el.style.top = c.lane * g.laneHeight + "px";
-      c.width = c.el.offsetWidth;
+      c.width = commentWidth(c.el, g.scale);
       c.animation.cancel();
       startFlight(c, g.width);
       c.animation.currentTime = progress * c.duration;
@@ -385,6 +414,8 @@
     queued = new WeakSet();
     for (const c of active) c.animation.cancel();
     active.clear();
+    layerObserver?.disconnect();
+    layerObserver = null;
     if (nicoLayer) nicoLayer.remove();
     nicoLayer = null;
     laneOccupants = new Map();
@@ -401,32 +432,93 @@
     if (div.classList.contains("chat-shadow") || fromServer(div)) return null;
     const message = div.lastElementChild;
     if (!message || message.classList.contains("server-whisper") || message.classList.contains("timestamp")) return null;
-    const clone = message.cloneNode(true);
+    // The copy is made in a detached document, where images don't load: an
+    // emote only loads once, for the chat, and the copy joins the page (and
+    // shows that same image) once the chat's has loaded. See emotesReady.
+    const clone = inertDocument().importNode(message, true);
+    keepChatColours(div, message, clone);
     clone.removeAttribute("class");
-    // Each emote's shape, from the one in chat (which has loaded), so the
-    // comment's width is right before the copy has loaded.
-    const originals = message.querySelectorAll("img");
-    clone.querySelectorAll("img").forEach((img, i) => {
-      const o = originals[i];
-      if (o && o.naturalWidth && o.naturalHeight) img.dataset.cpRatio = String(o.naturalWidth / o.naturalHeight);
-    });
+    const originals = [...message.querySelectorAll("img")];
+    const pairs = [...clone.querySelectorAll("img")].map((img, i) => [originals[i], img]);
     for (const s of clone.querySelectorAll(".spoiler")) s.remove();
     for (const a of clone.querySelectorAll("a")) {
       if (/^\s*(https?:\/\/|www\.)/i.test(a.textContent)) a.remove();
-      else a.replaceWith(document.createTextNode(a.textContent));
+      else a.replaceWith(clone.ownerDocument.createTextNode(a.textContent));
     }
     for (const img of clone.querySelectorAll("img")) {
       if (!img.classList.contains("channel-emote")) img.remove();
     }
     // Addresses the channel doesn't turn into links are plain text.
-    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    const walker = clone.ownerDocument.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
     for (let t = walker.nextNode(); t; t = walker.nextNode()) {
       t.nodeValue = t.nodeValue.replace(/\b(?:https?:\/\/|www\.)\S+/gi, "");
     }
-    const hasEmote = clone.querySelector("img") !== null;
+    const emotes = pairs.filter(([, img]) => clone.contains(img));
     const hasText = clone.textContent.trim() !== "";
-    if (!hasText && !hasEmote) return null;
-    return { div, content: clone, solo: hasEmote && !hasText };
+    if (!hasText && !emotes.length) return null;
+    return { div, content: clone, ready: emotesReady(emotes, clone) };
+  }
+
+  let inert = null;
+  function inertDocument() {
+    if (!inert) inert = document.implementation.createHTMLDocument("");
+    return inert;
+  }
+
+  // Each emote's shape comes from the chat's own image, once it has loaded
+  // (it's usually loaded already), so the comment's width is known before
+  // it flies: measured any earlier, an emote would count as no width at all
+  // and leave the video too soon. One that fails to load, or takes too
+  // long, is left out of the comment.
+  function emotesReady(pairs, clone) {
+    return Promise.all(pairs.map(([original, img]) => new Promise((resolve) => {
+      let timer = 0;
+      const done = () => {
+        clearTimeout(timer);
+        const ratio = emoteRatio(original);
+        if (ratio) img.dataset.cpRatio = String(ratio);
+        else img.remove();
+        resolve();
+      };
+      if (!original || original.complete) { done(); return; }
+      timer = setTimeout(done, NICO_IMAGE_WAIT_MS);
+      original.addEventListener("load", done, { once: true });
+      original.addEventListener("error", done, { once: true });
+    }))).then(() => {
+      const emotes = clone.querySelectorAll("img").length;
+      const text = clone.textContent.trim() !== "";
+      return { solo: emotes > 0 && !text, empty: emotes === 0 && !text };
+    });
+  }
+
+  // An emote's shape (width over height), or 0 if it didn't load. An SVG can
+  // have no size of its own, so it takes the shape it's shown at in chat.
+  function emoteRatio(original) {
+    if (!original) return 0;
+    if (original.naturalWidth && original.naturalHeight) return original.naturalWidth / original.naturalHeight;
+    if (/\.svg([?#]|$)|^data:image\/svg/i.test(original.currentSrc || original.src)) {
+      const r = original.getBoundingClientRect();
+      return r.width && r.height ? r.width / r.height : 1;
+    }
+    return 0;
+  }
+
+  // Coloured text in chat (greentext, or a channel's own colours) keeps its
+  // colour when it flies, lightened if it's too dark to read over a video.
+  // Everything else is the comments' white.
+  function keepChatColours(div, message, clone) {
+    const base = getComputedStyle(div).color;
+    const copies = clone.querySelectorAll("*");
+    const pairs = [[message, clone], ...[...message.querySelectorAll("*")].map((el, i) => [el, copies[i]])];
+    for (const [el, copy] of pairs) {
+      if (!copy || el.tagName === "IMG") continue;
+      const colour = getComputedStyle(el).color;
+      const around = el === message ? base : getComputedStyle(el.parentElement).color;
+      if (colour === around) continue;                       // no change of colour here
+      if (colour === base) { copy.style.color = "#fff"; continue; }   // back to plain text
+      const c = parseColour(colour);
+      if (c) copy.style.color = readableRgb(c, { r: 0, g: 0, b: 0 });
+    }
   }
 
   function enqueue(items) {
@@ -434,9 +526,16 @@
     for (const item of items) {
       queued.add(item.div);
       pending.push(item);
+      // Once its emotes are in, it can fly (see drain).
+      item.ready.then(({ solo, empty }) => {
+        item.solo = solo;
+        item.empty = empty;
+        item.settled = true;
+        wake();
+      });
     }
-    // At most NEKO_MAX_QUEUE waiting: the oldest go, so it stays near live.
-    while (pending.length > NEKO_MAX_QUEUE) {
+    // At most NICO_MAX_QUEUE waiting: the oldest go, so it stays near live.
+    while (pending.length > NICO_MAX_QUEUE) {
       const dropped = pending.shift();
       if (dropped.el) dropped.el.remove();
     }
@@ -462,10 +561,10 @@
     });
   }
 
-  // The lane rule: how long until a comment
-  // [width] wide moving at [speed] may enter a lane whose newest comment is
-  // [last]. It must have moved [gap] clear of the edge, and if the new one is
-  // faster, be gone before the new one could reach it.
+  // The lane rule: how long until a comment [width] wide moving at [speed]
+  // may enter a lane whose newest comment is [last]. That one must have moved
+  // [gap] clear of the edge, and if the new one is faster, be gone before the
+  // new one could reach it.
   function laneWaitMs(last, now, width, speed, gap, screenWidth) {
     if (last.speed <= 0) return Math.max(0, Math.ceil(last.clearAt - now));
     const travelled = (now - last.spawnAt) * last.speed;
@@ -518,10 +617,17 @@
     return Math.min(1000, Math.max(16, min));
   }
 
+  // How far a comment has to go to be fully off the video: its exact width,
+  // plus room for the glow round the text, so it's gone, glow and all,
+  // before it's taken away.
+  function commentWidth(el, scale) {
+    return Math.ceil(el.getBoundingClientRect().width) + Math.ceil(NICO_GLOW * scale * 2);
+  }
+
   function sizeComment(el, solo, scale) {
-    el.style.fontSize = NEKO_TEXT_SIZE * scale + "px";
-    el.style.textShadow = `0 0 ${NEKO_GLOW * scale}px #000`;
-    const h = (solo ? NEKO_SOLO_EMOTE_HEIGHT : NEKO_EMOTE_HEIGHT) * scale;
+    el.style.fontSize = NICO_TEXT_SIZE * scale + "px";
+    el.style.textShadow = `0 0 ${NICO_GLOW * scale}px #000`;
+    const h = (solo ? NICO_SOLO_EMOTE_HEIGHT : NICO_EMOTE_HEIGHT) * scale;
     for (const img of el.querySelectorAll("img")) {
       img.style.setProperty("height", h + "px", "important");
       const ratio = Number(img.dataset.cpRatio);
@@ -542,7 +648,7 @@
     if (item.el.parentElement !== layer) layer.appendChild(item.el);
     sizeComment(item.el, item.solo, scale);
     item.scale = scale;
-    item.width = item.el.offsetWidth;
+    item.width = commentWidth(item.el, scale);
   }
 
   async function drain() {
@@ -555,11 +661,24 @@
         const g = geometry(layer);
         if (g.width < 50 || g.height < 50) break;
 
-        const item = pending[0];
+        // The oldest comment that's ready flies next. One still waiting for
+        // an emote image doesn't hold up the ones behind it; it goes as soon
+        // as the image is in.
+        const index = pending.findIndex((i) => i.settled);
+        if (index === -1) {
+          await sleep(1000, true);
+          continue;
+        }
+        const item = pending[index];
+        if (item.empty) {
+          pending.splice(index, 1);
+          continue;
+        }
         prepare(item, layer, g.scale);
         const distance = g.width + item.width;
-        const duration = Math.min(NEKO_MAX_DURATION_MS, Math.max(NEKO_BASELINE_DURATION_MS,
-          Math.round(distance / (NEKO_MAX_SPEED * g.scale))));
+        const fast = nicoSpeed();
+        const duration = Math.min(NICO_MAX_DURATION_MS / fast, Math.max(NICO_BASELINE_DURATION_MS / fast,
+          Math.round(distance / (NICO_MAX_SPEED * g.scale * fast))));
         const speed = distance / duration;
 
         // The animations' own clock, so a comment is exactly where the lanes
@@ -570,7 +689,7 @@
           await sleep(nextSafeWaitMs(now, item.width, speed, g), true);
           continue;
         }
-        pending.shift();
+        pending.splice(index, 1);
         const occupant = { spawnAt: now, speed, width: item.width, clearAt: now + duration };
         if (!laneOccupants.has(lane)) laneOccupants.set(lane, []);
         laneOccupants.get(lane).push(occupant);
@@ -582,7 +701,7 @@
         c.animation.startTime = now;
         active.add(c);
         // A short stagger, so comments stream in rather than as a wall.
-        await sleep(NEKO_SPAWN_STAGGER_MS, false);
+        await sleep(NICO_SPAWN_STAGGER_MS, false);
       }
     } finally {
       draining = false;
@@ -598,7 +717,7 @@
 
   function catchUp(divs) {
     const recent = [];
-    for (let i = divs.length - 1; i >= 0 && recent.length < NEKO_CATCHUP_COUNT; i--) {
+    for (let i = divs.length - 1; i >= 0 && recent.length < NICO_CATCHUP_COUNT; i--) {
       if (queued.has(divs[i]) || !divs[i].isConnected) continue;
       const item = nicoContent(divs[i]);
       if (item) recent.unshift(item);
@@ -681,7 +800,7 @@
       const item = nicoContent(div);
       if (item) fresh.push(item);
     }
-    if (fresh.length) enqueue(fresh.slice(-NEKO_MAX_BURST));
+    if (fresh.length) enqueue(fresh.slice(-NICO_MAX_BURST));
   }
 
   function watchChat() {
@@ -697,10 +816,9 @@
 
   // ---- click to reply, click an emote --------------------------------------
 
-  // A name drops "name: " into the message box, an emote drops
-  // its code, at the cursor (or the end, if the box wasn't in use), with a
-  // space before it when it would otherwise run into the word before.
-  // Nothing is sent.
+  // A name drops "name: " into the message box, an emote drops its code, at
+  // the cursor (or the end, if the box wasn't in use), with a space before
+  // it when it would otherwise run into the word before. Nothing is sent.
   function insertIntoChat(fragment) {
     const line = document.getElementById("chatline");
     if (!line || line.disabled || line.offsetParent === null) return;
@@ -739,9 +857,12 @@
 
   // ---- lights down ----------------------------------------------------------
 
-  const DIM = 0.9;             // the page around the video, 90% dark
-  const PEEK = DIM * 0.5;      // a click outside the video lifts half the dark
-  const PEEK_MS = 4000;
+  // How dark the page around the video goes (90% unless changed in the
+  // popup), how much of that a click outside the video lifts (half), and
+  // for how long (4 seconds unless changed).
+  const dimLevel = () => clamp(settings.dim ?? DEFAULTS.dim, 30, 100) / 100;
+  const peekLevel = () => dimLevel() * 0.5;
+  const peekMs = () => clamp(settings.peekSeconds ?? DEFAULTS.peekSeconds, 1, 10) * 1000;
   let lightsOn = false;
   let peekTimer = 0;
   let scrim = null;
@@ -814,7 +935,7 @@
       // The video moves when things above it open or close; a cheap check
       // twice a second keeps the hole on it.
       followTimer = setInterval(placeScrim, 500);
-      setDarkness(typing() ? PEEK : DIM, 350, "ease-in-out");
+      setDarkness(typing() ? peekLevel() : dimLevel(), 350, "ease-in-out");
     } else {
       clearInterval(followTimer);
       if (scrim) {
@@ -831,11 +952,11 @@
   const PEEK_EASING = "cubic-bezier(0.37, 0, 0.63, 1)";
 
   function peek() {
-    setDarkness(PEEK, 450, PEEK_EASING);
+    setDarkness(peekLevel(), 450, PEEK_EASING);
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => {
-      if (lightsOn && !typing()) setDarkness(DIM, 600, PEEK_EASING);
-    }, PEEK_MS);
+      if (lightsOn && !typing()) setDarkness(dimLevel(), 600, PEEK_EASING);
+    }, peekMs());
   }
 
   document.addEventListener("pointerdown", (e) => {

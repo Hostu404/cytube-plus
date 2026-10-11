@@ -4,7 +4,8 @@
 //  - Polished look: the video, its buttons, playlist, poll and chat as
 //    rounded cards (see polished-css.js).
 //  - Coloured names: each name in chat gets its own colour, over any
-//    colour the channel's CSS gives names; staff keep their rank colours.
+//    colour the channel's CSS gives names; staff get the colour the user
+//    list shows them in.
 //  - Niconico comments: new chat messages fly across the video in lanes,
 //    with limits for when chat floods.
 //  - Lights down: dims everything around the video; a click outside it
@@ -168,7 +169,7 @@
   // The palette: soft colours that read on a dark background.
   const PALETTE = ["#8ab4f8", "#f28b82", "#fdd663", "#81c995", "#fcad70", "#c58af9", "#78d9ec", "#ff8bcb"];
   const colourCache = new Map();
-  const ourColour = new WeakMap();   // a name in chat -> the colour this gave it
+  const ourColour = new WeakMap();   // a name in chat -> { given, shown }: the colour this gave it
   let chatBackground = null;
 
   // A simple string hash (Java's String.hashCode), so a name always gets the
@@ -249,11 +250,34 @@
     return [...div.classList].some((c) => c.startsWith("chat-msg-\\$") || c.startsWith("server-msg"));
   }
 
+  // Staff show their rank colour in chat only while they have CyTube's "show
+  // name colour" on, but always in the user list. So that their name looks
+  // the same in both, it gets the colour the user list shows it in. Kept
+  // after they leave, so their earlier messages don't change colour.
+  const STAFF = ["userlist_op", "userlist_owner", "userlist_siteadmin"];
+  const staffColours = new Map();   // lower-case name -> colour
+
+  function nameColour(name) {
+    const lower = name.toLowerCase();
+    for (const item of document.querySelectorAll("#userlist .userlist_item")) {
+      const tag = item.children[1];
+      if (!tag || tag.textContent.trim().toLowerCase() !== lower) continue;
+      if (STAFF.some((c) => tag.classList.contains(c))) staffColours.set(lower, getComputedStyle(tag).color);
+      else staffColours.delete(lower);
+      break;
+    }
+    return staffColours.get(lower) ?? colourFor(name);
+  }
+
+  function nameOf(strong) {
+    return strong.textContent.replace(/:\s*$/, "").trim();
+  }
+
   // The colour goes over whatever the channel's CSS gives names (inline and
-  // !important, so even a channel's !important rule gives way). Staff and
-  // guests keep their rank colour, and site-admin flair is a label of its
-  // own. A name a channel's script has coloured itself, on the spot (a "pick
-  // your name colour" feature, say), keeps that colour.
+  // !important, so even a channel's !important rule gives way). Staff whose
+  // messages carry their rank colour keep it, and site-admin flair is a
+  // label of its own. A name a channel's script has coloured itself, on the
+  // spot (a "pick your name colour" feature, say), keeps that colour.
   function colourName(div) {
     if (!(div instanceof HTMLElement) || fromServer(div)) return;
     const strong = div.querySelector(":scope > span:not(.timestamp) > strong.username");
@@ -261,10 +285,19 @@
     const span = strong.parentElement;
     if ([...span.classList].some((c) => c.startsWith("userlist_") || c === "label")) return;
     if (strong.style.color || span.style.color) return;
-    const name = strong.textContent.replace(/:\s*$/, "").trim();
+    const name = nameOf(strong);
     if (!name) return;
-    strong.style.setProperty("color", colourFor(name), "important");
-    ourColour.set(strong, strong.style.getPropertyValue("color"));
+    giveColour(strong, nameColour(name));
+  }
+
+  function giveColour(strong, colour) {
+    strong.style.setProperty("color", colour, "important");
+    ourColour.set(strong, { given: colour, shown: strong.style.getPropertyValue("color") });
+  }
+
+  // Ours still, unless a channel script has since coloured it itself.
+  function stillOurs(strong) {
+    return strong.style.getPropertyValue("color") === ourColour.get(strong)?.shown;
   }
 
   // Takes back every colour this gave (leaving any a channel script has
@@ -274,12 +307,33 @@
     if (!buffer) return;
     for (const strong of buffer.querySelectorAll("strong.username")) {
       if (!ourColour.has(strong)) continue;
-      if (strong.style.getPropertyValue("color") === ourColour.get(strong)) strong.style.removeProperty("color");
+      if (stillOurs(strong)) strong.style.removeProperty("color");
       ourColour.delete(strong);
     }
     colourCache.clear();
     chatBackground = null;
     if (settings.colourNames) for (const div of buffer.children) colourName(div);
+  }
+
+  // Someone joining, leaving or changing rank: names already in chat follow
+  // (chat history can also arrive before the user list does).
+  function watchUserlist() {
+    const list = document.getElementById("userlist");
+    const buffer = document.getElementById("messagebuffer");
+    if (!list || !buffer) return;
+    let timer = 0;
+    const update = () => {
+      timer = 0;
+      if (!settings.colourNames) return;
+      for (const strong of buffer.querySelectorAll("strong.username")) {
+        if (!ourColour.has(strong) || !stillOurs(strong)) continue;
+        const colour = nameColour(nameOf(strong));
+        if (colour !== ourColour.get(strong).given) giveColour(strong, colour);
+      }
+    };
+    new MutationObserver(() => {
+      if (!timer) timer = setTimeout(update, 300);
+    }).observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   }
 
   // ---- the video ------------------------------------------------------------
@@ -1113,6 +1167,7 @@
 
   // (The look and the buttons come once the settings are in: see refresh.)
   watchChat();
+  watchUserlist();
   watchPolls();
   watchStyles();
 })();

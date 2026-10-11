@@ -816,44 +816,97 @@
 
   // ---- click to reply, click an emote --------------------------------------
 
+  // The box messages are typed in: CyTube's own, or, on a channel that puts
+  // its own box in the chat instead, that one.
+  function chatBox() {
+    const line = document.getElementById("chatline");
+    if (line && !line.disabled && line.offsetParent !== null) return line;
+    const wrap = document.getElementById("chatwrap");
+    if (!wrap) return null;
+    for (const el of wrap.querySelectorAll("input[type='text'], input:not([type]), textarea")) {
+      if (!el.disabled && el.offsetParent !== null && !el.closest("#guestlogin")) return el;
+    }
+    return null;
+  }
+
   // A name drops "name: " into the message box, an emote drops its code, at
   // the cursor (or the end, if the box wasn't in use), with a space before
   // it when it would otherwise run into the word before. Nothing is sent.
   function insertIntoChat(fragment) {
-    const line = document.getElementById("chatline");
-    if (!line || line.disabled || line.offsetParent === null) return;
-    const value = line.value;
-    const focused = document.activeElement === line;
-    const start = focused ? line.selectionStart : value.length;
-    const end = focused ? line.selectionEnd : value.length;
+    const box = chatBox();
+    if (!box) return;
+    const value = box.value;
+    const focused = document.activeElement === box;
+    const start = focused ? box.selectionStart : value.length;
+    const end = focused ? box.selectionEnd : value.length;
     const needsSpace = start > 0 && !/\s/.test(value[start - 1]);
     const insert = (needsSpace ? " " : "") + fragment;
-    line.value = value.slice(0, start) + insert + value.slice(end);
-    const caret = start + insert.length;
-    line.focus();
-    line.setSelectionRange(caret, caret);
+    box.focus();
+    box.setRangeText(insert, start, end, "end");
+    // As if typed, for any script of the channel's that watches the box.
+    box.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  // This runs last, after the page's own handlers: if one of them has
-  // already done something with the click (cancelled it, or put something
-  // in the message box), this leaves it at that.
-  let lineBeforeClick = null;
-  document.addEventListener("click", () => {
-    lineBeforeClick = document.getElementById("chatline")?.value ?? null;
-  }, true);
-  window.addEventListener("click", (e) => {
-    if (!settings.clickToInsert || e.defaultPrevented || !(e.target instanceof Element)) return;
-    if (!e.target.closest("#messagebuffer") || e.target.closest("a")) return;
-    if ((document.getElementById("chatline")?.value ?? null) !== lineBeforeClick) return;
-    const name = e.target.closest("strong.username");
-    if (name) {
-      const who = name.textContent.replace(/:\s*$/, "").trim();
-      if (who && who !== "[server]") insertIntoChat(who + ": ");
-      return;
+  // Who sent a message: CyTube marks each one with its sender, whatever the
+  // channel does to how the name looks.
+  function senderOf(div) {
+    const mark = [...div.classList].find((c) => c.startsWith("chat-msg-"));
+    return mark ? mark.slice("chat-msg-".length) : "";
+  }
+
+  // What was clicked: a name (CyTube's, or a channel's own way of showing
+  // the sender's name) or an emote. Null for anything else.
+  function clickedOn(target) {
+    if (!(target instanceof Element) || !target.closest("#messagebuffer") || target.closest("a")) return null;
+    const emote = target.closest("img.channel-emote, img[class*='emote'], video[class*='emote']");
+    if (emote) {
+      const code = emote.title || emote.alt || "";
+      return code ? { fragment: code } : null;
     }
-    const emote = e.target.closest("img.channel-emote");
-    if (emote && (emote.title || emote.alt)) insertIntoChat(emote.title || emote.alt);
-  });
+    const div = target.closest("#messagebuffer > div");
+    if (!div || fromServer(div)) return null;
+    const strong = target.closest("strong.username");
+    if (strong) {
+      const who = strong.textContent.replace(/:\s*$/, "").trim();
+      return who ? { fragment: who + ": " } : null;
+    }
+    // Otherwise, the sender's name wherever the channel shows it, ahead of the
+    // message itself (which is the last part of the line).
+    if (div.lastElementChild?.contains(target)) return null;
+    const sender = senderOf(div);
+    const text = target.textContent.replace(/:\s*$/, "").trim();
+    if (sender && text.toLowerCase() === sender.toLowerCase()) return { fragment: sender + ": " };
+    return null;
+  }
+
+  // Seen first, acted on last: the click is noted before any of the page's
+  // own handlers (so a channel script that stops it going any further can't
+  // hide it), and acted on once they've all run, unless one of them did
+  // something with it: put something in the message box, changed the
+  // message (one channel swaps some emotes when they're clicked), or opened
+  // something (a card, a menu, a dialog). A handler that only cancels the
+  // click, with nothing to show for it, doesn't count.
+  window.addEventListener("click", (e) => {
+    if (!settings.clickToInsert) return;
+    const what = clickedOn(e.target);
+    if (!what) return;
+    const before = chatBox()?.value ?? null;
+    const message = e.target.closest("#messagebuffer > div");
+    let reacted = false;
+    const notice = (records) => {
+      for (const r of records) {
+        if (r.target === document.body || r.target === document.documentElement || message?.contains(r.target)) reacted = true;
+      }
+    };
+    const watcher = new MutationObserver(notice);
+    watcher.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+    setTimeout(() => {
+      notice(watcher.takeRecords());
+      watcher.disconnect();
+      if (reacted || (chatBox()?.value ?? null) !== before) return;
+      insertIntoChat(what.fragment);
+    }, 0);
+  }, true);
 
   // ---- lights down ----------------------------------------------------------
 

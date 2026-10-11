@@ -82,7 +82,9 @@
 
 /* Names and emotes in chat can be clicked (to reply, to post the emote). */
 :where(.cytube-plus-click #messagebuffer strong.username,
-       .cytube-plus-click #messagebuffer img.channel-emote) {
+       .cytube-plus-click #messagebuffer img.channel-emote,
+       .cytube-plus-click #messagebuffer img[class*='emote'],
+       .cytube-plus-click #messagebuffer video[class*='emote']) {
   cursor: pointer;
 }
 

@@ -1,6 +1,6 @@
 # CyTube Plus
 
-A Firefox add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
+A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
 ## Screenshots
 <img width="272" height="924" alt="image" src="https://github.com/user-attachments/assets/59b94d5c-5b75-4f8a-8604-8388722bf0fa" />
 
@@ -45,7 +45,7 @@ What's changed in each version is on the
 - If a channel's script already does something when a name is clicked, or
   colours a name itself, the add-on leaves that alone.
 
-## Installing
+## Installing on Firefox
 
 **From Firefox Add-ons** (recommended: it updates itself) (Currently awaiting Mozillas approval)
 
@@ -65,11 +65,32 @@ Android and tap **Add to Firefox**.
 Installed this way it doesn't update itself: install a newer release the
 same way to update.
 
-Once it's installed, open any cytu.be channel. If the buttons don't
-appear, open the add-on's menu in the toolbar's extensions panel and check
-it's allowed on cytu.be.
-
 Needs Firefox 140 or newer (desktop) or 142 (Android).
+
+## Installing on Chrome, Edge, Brave or Opera
+
+**From the Chrome Web Store** (recommended: it updates itself) (Currently awaiting Google's approval)
+
+**From GitHub**
+
+1. Download the Chrome zip (`cytube-plus-chrome-….zip`) from the latest
+   release on the
+   [Releases page](https://github.com/Hostu404/cytube-plus/releases), and
+   extract it.
+2. Open the browser's extensions page (`chrome://extensions`, or
+   `edge://extensions` in Edge) and turn on **Developer mode**.
+3. Click **Load unpacked** and pick the extracted folder.
+
+It stays installed, but doesn't update itself: to update, remove it and
+load the newer release the same way. Keep the extracted folder: the
+browser loads the add-on from it.
+
+Needs Chrome 120 or newer, or a browser built on it.
+
+## Once it's installed
+
+Open any cytu.be channel. If the buttons don't appear, open the add-on's
+menu in the toolbar's extensions panel and check it's allowed on cytu.be.
 
 ## Installing from the source code
 
@@ -82,3 +103,7 @@ again each time Firefox starts.
 2. In Firefox, open `about:debugging#/runtime/this-firefox`.
 3. Click **Load Temporary Add-on…** and pick `manifest.json` in the
    extracted folder.
+
+On Chrome, use the Chrome zip from the Releases page instead: the
+repository's `manifest.json` is Firefox's, and `manifest.chrome.json` is
+Chrome's.

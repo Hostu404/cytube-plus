@@ -11,14 +11,20 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 - **Polished look**: the video, the buttons under it, the playlist, the
   poll and the chat become rounded, tidier cards, with quieter timestamps,
   the playing item marked in the playlist and poll results shown as bars.
-  The rest of the page is left alone.
+  A long chat message wraps in its own column beside the time and name,
+  so its second line starts under its first word, not under the time
+  (on a chat wide enough for it). The rest of the page is left alone.
 - **Coloured names**: each name in chat gets its own colour.
 - **Highlights**: messages that mention you, and private messages, stand
   out. CyTube's own PM windows work as usual.
 - **Lights down**: the bulb button under the video dims the rest of the
   page (90% by default). Click outside the video to lift the dark for a
   few seconds. How dark it goes and how long it lifts for can be changed
-  in the toolbar popup.
+  in the toolbar popup. With **Dim the chat separately** on, the chat gets
+  a lighter dark of its own (40% by default, adjustable) that stays put,
+  so it's always readable. The rest of the page then lifts only for a
+  click outside both the video and the chat, not while you type. The
+  chat's header is dimmed with the page.
 - **Niconico comments**: the square button under the video makes new chat
   messages fly across it, emotes included, and coloured text like
   greentext keeps its colour. They show in fullscreen too, and their speed
@@ -28,6 +34,10 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. Nothing is sent until you press
   Enter.
+- **Shrink big emotes**: big emotes in chat are made smaller so the chat
+  reads more easily: at most 36px tall inside a message, and 84px when a
+  message is only emotes. Emotes smaller than that stay as CyTube (or the
+  channel) shows them: none ever gets bigger.
 - **Blacklist**: the add-on does nothing at all on blacklisted channels.
   The Kinoplex is blacklisted to start with. Channels can be added or
   removed in the toolbar popup, which also has a switch for the channel
@@ -40,7 +50,9 @@ What's changed in each version is on the
 
 ## Staying out of the channel's way
 
-- A channel's own CSS always wins over the Polished look.
+- A channel's own CSS always wins over the Polished look. (Coloured names
+  go over the channel's on purpose, and emote sizes can make a channel's
+  big emotes smaller, never bigger; both can be switched off.)
 - None of CyTube's code is changed, and the add-on's buttons sit in a group
   of their own, so a channel's scripts find the page as they expect.
 - If a channel's script already does something when a name is clicked, or
@@ -70,21 +82,14 @@ Needs Firefox 140 or newer (desktop) or 142 (Android).
 
 ## Installing on Chrome, Edge, Brave or Opera
 
-**From the Chrome Web Store** (recommended: it updates itself) (Currently awaiting Google's approval)
+**From the Chrome Web Store** (it updates itself)
 
-**From GitHub**
+Open the [CyTube Plus page on the Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) and click
+**Add to Chrome**. Edge, Brave and Opera install it from the same page
+(Edge and Opera may ask you to allow extensions from other stores first).
 
-1. Download the Chrome zip (`cytube-plus-chrome-….zip`) from the latest
-   release on the
-   [Releases page](https://github.com/Hostu404/cytube-plus/releases), and
-   extract it.
-2. Open the browser's extensions page (`chrome://extensions`, or
-   `edge://extensions` in Edge) and turn on **Developer mode**.
-3. Click **Load unpacked** and pick the extracted folder.
-
-It stays installed, but doesn't update itself: to update, remove it and
-load the newer release the same way. Keep the extracted folder: the
-browser loads the add-on from it.
+Loaded it from a GitHub zip before it was on the store? Remove that copy
+on the extensions page (`chrome://extensions`) so you don't have two.
 
 Needs Chrome 120 or newer, or a browser built on it.
 
@@ -105,6 +110,8 @@ again each time Firefox starts.
 3. Click **Load Temporary Add-on…** and pick `manifest.json` in the
    extracted folder.
 
-On Chrome, use the Chrome zip from the Releases page instead: the
-repository's `manifest.json` is Firefox's, and `manifest.chrome.json` is
-Chrome's.
+On Chrome, install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim).
+To load the source code there instead: the repository's `manifest.json`
+is Firefox's, so rename `manifest.chrome.json` to `manifest.json`
+(replacing it), turn on **Developer mode** on `chrome://extensions`, click
+**Load unpacked** and pick the folder.

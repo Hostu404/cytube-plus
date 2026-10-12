@@ -29,14 +29,14 @@
     <label class="row">
       <span class="text">
         <span class="title">Polished look</span>
-        <span class="hint">Rounded, tidier chat, playlist, poll and player. A channel's own style still comes first.</span>
+        <span class="hint">Cleaner chat, playlist, poll and player. Channel CSS still overrides it.</span>
       </span>
       <input type="checkbox" role="switch" id="polished">
     </label>
     <label class="row">
       <span class="text">
         <span class="title">Coloured names</span>
-        <span class="hint">Gives everyone in chat their own name colour, over the channel's. Staff keep their rank colours.</span>
+        <span class="hint">Every name in chat gets its own colour. Staff keep their rank colours.</span>
       </span>
       <input type="checkbox" role="switch" id="colourNames">
     </label>
@@ -47,7 +47,7 @@
     <label class="row">
       <span class="text">
         <span class="title">Niconico comments</span>
-        <span class="hint">New chat messages scroll across the video. The square button under the video does the same.</span>
+        <span class="hint">Chat messages fly across the video. Same as the square button under it.</span>
       </span>
       <input type="checkbox" role="switch" id="nico">
     </label>
@@ -60,7 +60,7 @@
     <label class="row">
       <span class="text">
         <span class="title">Lights down button</span>
-        <span class="hint">Adds a bulb under the video that dims the rest of the page. A click outside the video lifts the dark for a moment.</span>
+        <span class="hint">Bulb button under the video that dims the rest of the page. Click outside the video to lift it for a bit.</span>
       </span>
       <input type="checkbox" role="switch" id="lightsButton">
     </label>
@@ -74,6 +74,19 @@
         <input type="range" id="peekSeconds" min="1" max="10" step="1">
       </label>
     </div>
+    <label class="row" id="chat-dim-row">
+      <span class="text">
+        <span class="title">Dim the chat separately</span>
+        <span class="hint">Chat gets its own lighter dim.</span>
+      </span>
+      <input type="checkbox" role="switch" id="chatDimSeparate">
+    </label>
+    <div class="sliders" id="chat-dim-sliders">
+      <label class="slider">
+        <span class="slider-head"><span>Chat darkness</span><output id="chatDim-value"></output></span>
+        <input type="range" id="chatDim" min="0" max="100" step="5">
+      </label>
+    </div>
   </section>
 
   <section>
@@ -81,23 +94,30 @@
     <label class="row">
       <span class="text">
         <span class="title">Highlight mentions and PMs</span>
-        <span class="hint">Messages that mention you, and private messages, stand out.</span>
+        <span class="hint">Messages that mention you and PMs stand out.</span>
       </span>
       <input type="checkbox" role="switch" id="highlights">
     </label>
     <label class="row">
       <span class="text">
         <span class="title">Click names and emotes</span>
-        <span class="hint">Click a name to reply to someone, or an emote to add it to your message.</span>
+        <span class="hint">Click a name to reply, or an emote to add it to your message.</span>
       </span>
       <input type="checkbox" role="switch" id="clickToInsert">
+    </label>
+    <label class="row">
+      <span class="text">
+        <span class="title">Shrink big emotes</span>
+        <span class="hint">Oversized emotes get smaller, more so mid-message. Small ones are left alone.</span>
+      </span>
+      <input type="checkbox" role="switch" id="emoteSizes">
     </label>
   </section>
 
   <section>
     <h2>Blacklist</h2>
     <ul id="off-list"></ul>
-    <p id="off-empty" class="empty" hidden>None: it's on everywhere.</p>
+    <p id="off-empty" class="empty" hidden>No channels blacklisted.</p>
     <form id="off-add" class="add">
       <input id="off-input" type="text" placeholder="Channel name or link" aria-label="Channel to blacklist" autocomplete="off" spellcheck="false">
       <button type="submit">Add</button>
@@ -110,7 +130,7 @@
       <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8.7 16.3 4.4 12l4.3-4.3-1.4-1.4L1.6 12l5.7 5.7zm6.6 0 1.4 1.4 5.7-5.7-5.7-5.7-1.4 1.4 4.3 4.3z"/></svg>
       View source
     </a>
-    <p class="muted">Changes apply straight away. Unofficial, not made by CyTube.</p>
+    <p class="muted">Changes apply instantly. Unofficial, not made by CyTube.</p>
   </footer>
 
   <script src="popup.js"></script>

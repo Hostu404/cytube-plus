@@ -1,7 +1,8 @@
 // The Polished look: only the video, the buttons under it, the playlist, the
 // poll and the chat change; the rest of the page is left as the theme has
 // it. They become rounded cards on one background instead of boxes with
-// borders; chat gets quieter timestamps and even spacing; the buttons under
+// borders; chat gets quieter timestamps, even spacing, and long messages
+// that wrap in their own column beside the time and name; the buttons under
 // the video become one flat bar; the playing item is marked in the
 // playlist; poll results show as bars (content.js sets each option's
 // --cp-share).
@@ -50,6 +51,30 @@ globalThis.CP_POLISHED_CSS = String.raw`
 :where(#messagebuffer > div) {
   margin-bottom: 5px;
   line-height: 1.45;
+}
+/* A message's time and name stay together on the left, and the message
+   wraps in its own column beside them, so a long one's second line starts
+   under its first word, not under the time. Only on a chat wide enough for
+   it (content.js sets .cytube-plus-wide-chat); a very long name wraps
+   itself rather than squeeze the message. */
+:where(.cytube-plus-wide-chat #messagebuffer > div:has(> .timestamp, > span > .username)) {
+  display: flex;
+  align-items: baseline;
+}
+:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(*) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(.timestamp, span:has(> .username)) {
+  flex: none;
+}
+:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(.timestamp) {
+  /* Its own space goes at the end of a flex item; the name keeps its. */
+  margin-right: 0.3em;
+  white-space: nowrap;
+}
+:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(span:has(> .username)) {
+  max-width: 40%;
 }
 .timestamp:where(#messagebuffer *) {
   font-size: 11px;

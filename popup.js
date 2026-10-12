@@ -1,12 +1,13 @@
 // The toolbar popup: the settings, and the blacklist of channels the add-on is off on.
 const api = globalThis.browser ?? globalThis.chrome;
 const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true,
-  nicoSpeed: 100, dim: 90, peekSeconds: 4 };
+  emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
 // How the sliders' values read.
 const SHOW = {
   nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
   dim: (v) => v + "%",
   peekSeconds: (v) => v + (v === 1 ? " second" : " seconds"),
+  chatDim: (v) => v + "%",
 };
 const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 const SOURCE = "https://github.com/Hostu404/cytube-plus";
@@ -36,6 +37,8 @@ function showSettings(settings) {
   }
   document.getElementById("nico-sliders").classList.toggle("off", !s.nico);
   document.getElementById("lights-sliders").classList.toggle("off", !s.lightsButton);
+  document.getElementById("chat-dim-row").classList.toggle("off", !s.lightsButton);
+  document.getElementById("chat-dim-sliders").classList.toggle("off", !s.lightsButton || !s.chatDimSeparate);
 }
 
 function showSlider(input, value) {

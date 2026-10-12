@@ -14,6 +14,16 @@
   box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0);
 }
 
+/* The chat's own dark, when it's dimmed separately. Above the chat, below
+   Bootstrap's dialogs, never takes clicks. */
+.cp-chat-scrim {
+  position: fixed !important;
+  z-index: 1035 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  background-color: rgba(0, 0, 0, 0);
+}
+
 /* Niconico comments: inside the video box, so they're clipped to the video,
    never dimmed, and show in CyTube's fullscreen too. */
 .cp-nico {
@@ -78,6 +88,13 @@
 
 .cp-square.cp-on {
   background: currentColor;
+}
+
+/* Shrink big emotes (content.js does the shrinking): emotes in chat and
+   private messages are centred on the line, so the time and name sit level
+   with the middle of a big one. */
+.cytube-plus-emotes :is(#messagebuffer, .pm-buffer) :is(img, video).channel-emote {
+  vertical-align: middle !important;
 }
 
 /* Names and emotes in chat can be clicked (to reply, to post the emote). */

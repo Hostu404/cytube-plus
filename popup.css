@@ -187,7 +187,8 @@ footer p { margin: 0; }
   gap: 10px;
   padding: 2px 12px 12px;
 }
-.sliders.off { opacity: 0.45; }
+.sliders.off,
+.row.off { opacity: 0.45; }
 .slider { display: grid; gap: 4px; cursor: default; }
 .slider-head {
   display: flex;

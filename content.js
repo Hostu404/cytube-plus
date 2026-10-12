@@ -9,10 +9,14 @@
 //  - Niconico comments: new chat messages fly across the video in lanes,
 //    with limits for when chat floods.
 //  - Lights down: dims everything around the video; a click outside it
-//    lifts the dark a little for a few seconds.
+//    lifts the dark a little for a few seconds. The chat can have a lighter
+//    dark of its own, which stays as it is: then only a click outside both
+//    the video and the chat lifts the rest, and typing lifts nothing.
 //  - Click a name in chat to reply, or an emote to post the same one.
 //  - Mentions and PMs highlighted (content.css); how PMs work is left to
 //    CyTube.
+//  - Shrink big emotes: inside a message, and less when a message is only
+//    emotes; none ever gets bigger.
 //
 // It does nothing at all on blacklisted channels (the blacklist is edited
 // in the toolbar popup, and starts out with the Kinoplex).
@@ -27,8 +31,9 @@
   const api = globalThis.browser ?? globalThis.chrome;
 
   const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true,
-    nicoSpeed: 100, dim: 90, peekSeconds: 4 };
-  const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, highlights: false, clickToInsert: false };
+    emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
+  const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, highlights: false, clickToInsert: false,
+    emoteSizes: false };
   // The blacklist: channels it stays off on, until someone takes them off.
   const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 
@@ -76,7 +81,12 @@
   }
 
   function applySettings(wasNico) {
-    applyPolished();
+    keepChatAtEnd(chatBuffer(), () => {
+      applyPolished();
+      document.documentElement.classList.toggle("cytube-plus-emotes", settings.emoteSizes);
+      sizeAllMessages();
+    });
+    updateChatWidth();
     recolourAll();
     document.documentElement.classList.toggle("cytube-plus-click", settings.clickToInsert);
     document.documentElement.classList.toggle("cytube-plus-highlight", settings.highlights);
@@ -84,7 +94,11 @@
     if (settings.nico && !wasNico) nicoTurnedOn();
     if (!settings.nico) clearNico();
     if (!settings.lightsButton && lightsOn) setLights(false);
-    else if (lightsOn) setDarkness(typing() ? peekLevel() : dimLevel(), 250, "ease-in-out");
+    else if (lightsOn) {
+      clearTimeout(peekTimer);
+      placeScrim();
+      setDarkness(restingLevel(), 250, "ease-in-out");
+    }
   }
 
   // ---- polished look --------------------------------------------------------
@@ -108,6 +122,28 @@
     }
     placePolished();
     updatePollBars();
+  }
+
+  // Long messages wrap in their own column beside the time and name
+  // (polished-css.js), but only on a chat wide enough for that. On a narrow
+  // one (a phone, or a small window with the user list beside the chat) the
+  // column would be a sliver, so the chat keeps CyTube's own flow.
+  // (Once on, it stays on down to a little less, so a scrollbar coming and
+  // going can't flip it back and forth.)
+  const WIDE_CHAT = 320;
+  const WIDE_CHAT_MARGIN = 24;
+
+  function updateChatWidth() {
+    const buffer = chatBuffer();
+    const isWide = document.documentElement.classList.contains("cytube-plus-wide-chat");
+    const wide = settings.polished && !!buffer && buffer.clientWidth >= (isWide ? WIDE_CHAT - WIDE_CHAT_MARGIN : WIDE_CHAT);
+    if (isWide === wide) return;
+    keepChatAtEnd(buffer, () => document.documentElement.classList.toggle("cytube-plus-wide-chat", wide));
+  }
+
+  function watchChatWidth() {
+    const buffer = chatBuffer();
+    if (buffer) new ResizeObserver(updateChatWidth).observe(buffer);
   }
 
   // Changing theme in CyTube's options adds a new theme stylesheet at the
@@ -154,7 +190,18 @@
         if (m.target !== polishedStyle && (m.type === "characterData" || m.target.nodeName === "STYLE")) styles = true;
       }
       if (theme) placePolished();
-      if (styles || theme) recolourAll();
+      if (styles || theme) {
+        recolourAll();
+        // The channel's CSS can change how big it shows emotes. It has
+        // already moved the chat by now, so whether it was following the
+        // newest message comes from how it was last scrolled.
+        if (settings.emoteSizes) {
+          const follow = chatFollowing;
+          sizeAllMessages();
+          const buffer = chatBuffer();
+          if (follow && buffer) buffer.scrollTop = buffer.scrollHeight;
+        }
+      }
     }).observe(document.head, { childList: true, subtree: true, characterData: true });
   }
 
@@ -843,9 +890,135 @@
     return live;
   }
 
+  // ---- emote sizes ------------------------------------------------------------
+
+  // Shrink big emotes: an emote taller than the limit shrinks to it, 36px
+  // inside a message and 84px when the message is only emotes (up to 30).
+  // The limit is checked against the size the emote is shown at without
+  // this (CyTube's, or the channel's own), so nothing ever gets bigger: a
+  // small emote, or one the channel already shows small, stays as it is.
+  const EMOTE_LIMIT = 36;
+  const EMOTE_ONLY_LIMIT = 84;
+  const EMOTE_ONLY_MAX = 30;
+  const EMOTES = "img.channel-emote, video.channel-emote";
+
+  function isEmoteOnly(div) {
+    if (div.id === "newmessages-indicator" || fromServer(div)) return false;
+    const message = div.lastElementChild;
+    if (!message || message.classList.contains("timestamp")) return false;
+    const emotes = message.querySelectorAll(EMOTES);
+    if (!emotes.length || emotes.length > EMOTE_ONLY_MAX || message.textContent.trim() !== "") return false;
+    // Nothing else that shows: a posted picture, a link, a spoiler.
+    return !message.querySelector("img:not(.channel-emote), video:not(.channel-emote), a, iframe, .spoiler");
+  }
+
+  // Messages: each marked if it's only emotes, then all their emotes sized
+  // together (see sizeEmotes).
+  function sizeMessages(divs) {
+    const emotes = [];
+    for (const div of divs) {
+      if (!(div instanceof HTMLElement)) continue;
+      div.classList.toggle("cp-emote-only", settings.emoteSizes && isEmoteOnly(div));
+      emotes.push(...div.querySelectorAll(EMOTES));
+    }
+    sizeEmotes(emotes);
+  }
+
+  function sizeAllMessages() {
+    sizeMessages(document.querySelectorAll("#messagebuffer > div, #pmbar .pm-buffer > div"));
+  }
+
+  const waitingToLoad = new WeakSet();
+
+  // All undone, then all measured, then the big ones shrunk: measuring
+  // between changes would have the browser lay the page out again for each
+  // emote (a joining chat brings a hundred messages at once).
+  function sizeEmotes(emotes) {
+    for (const emote of emotes) {
+      if (!emote.dataset.cpShrunk) continue;
+      emote.style.removeProperty("height");
+      emote.style.removeProperty("width");
+      emote.style.removeProperty("object-fit");
+      delete emote.dataset.cpShrunk;
+    }
+    if (!settings.emoteSizes) return;
+    const shrink = [];
+    for (const emote of emotes) {
+      const video = emote instanceof HTMLVideoElement;
+      if (video ? emote.readyState < 1 : !emote.complete) {
+        // Its size is known once it has loaded.
+        if (waitingToLoad.has(emote)) continue;
+        waitingToLoad.add(emote);
+        emote.addEventListener(video ? "loadedmetadata" : "load", () => {
+          waitingToLoad.delete(emote);
+          keepChatAtEnd(emote.closest("#messagebuffer, .pm-buffer"), () => sizeEmotes([emote]));
+        }, { once: true });
+        continue;
+      }
+      const limit = emote.closest(".cp-emote-only") ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
+      if (shownHeight(emote) > limit) shrink.push([emote, limit]);
+    }
+    for (const [emote, limit] of shrink) {
+      emote.style.setProperty("height", limit + "px", "important");
+      emote.style.setProperty("width", "auto", "important");
+      emote.style.setProperty("object-fit", "contain", "important");
+      emote.dataset.cpShrunk = "1";
+    }
+  }
+
+  // How tall an emote is shown. In a window that isn't open (a PM window,
+  // say) it has no size on screen: then the height the page gives it, or its
+  // own, within any limit the page sets.
+  function shownHeight(emote) {
+    const height = emote.getBoundingClientRect().height;
+    if (height) return height;
+    const style = getComputedStyle(emote);
+    const set = parseFloat(style.height);
+    const own = Number.isFinite(set) ? set : emote.naturalHeight || emote.videoHeight || 0;
+    const max = parseFloat(style.maxHeight);
+    return Number.isFinite(max) ? Math.min(own, max) : own;
+  }
+
+  // A chat (or PM window) that was scrolled to its newest message stays
+  // there when this changes the height of what's in it.
+  function keepChatAtEnd(box, change) {
+    const atEnd = !!box && box.scrollHeight - box.scrollTop - box.clientHeight <= 1;
+    const height = box?.scrollHeight;
+    change();
+    if (atEnd && box.scrollHeight !== height) box.scrollTop = box.scrollHeight;
+  }
+
+  const chatBuffer = () => document.getElementById("messagebuffer");
+
+  // Whether the chat was at its newest message when it was last scrolled
+  // (by hand, or by CyTube following new messages). Things growing in it
+  // don't scroll it, so this stays as it was then.
+  let chatFollowing = true;
+
+  function watchChatScroll() {
+    const buffer = chatBuffer();
+    if (!buffer) return;
+    buffer.addEventListener("scroll", () => {
+      chatFollowing = buffer.scrollHeight - buffer.scrollTop - buffer.clientHeight <= 1;
+    }, { passive: true });
+  }
+
+  // Private messages: CyTube adds each one to that person's PM window.
+  function watchPms() {
+    const bar = document.getElementById("pmbar");
+    if (!bar) return;
+    new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (!m.target.classList?.contains("pm-buffer")) continue;
+        keepChatAtEnd(m.target, () => sizeMessages(m.addedNodes));
+      }
+    }).observe(bar, { childList: true, subtree: true });
+  }
+
   // ---- watching chat --------------------------------------------------------
 
   function onMessages(nodes) {
+    sizeMessages(nodes);
     const fresh = [];
     for (const div of nodes) {
       if (!(div instanceof HTMLElement)) continue;
@@ -864,7 +1037,7 @@
     new MutationObserver((mutations) => {
       const added = [];
       for (const m of mutations) for (const node of m.addedNodes) added.push(node);
-      onMessages(added);
+      keepChatAtEnd(buffer, () => onMessages(added));
     }).observe(buffer, { childList: true });
   }
 
@@ -967,19 +1140,33 @@
   // How dark the page around the video goes (90% unless changed in the
   // popup), how much of that a click outside the video lifts (half), and
   // for how long (4 seconds unless changed).
+  //
+  // With "Dim the chat separately", the chat has a dark of its own (40%
+  // unless changed), light enough to read, which never lifts. A click
+  // outside both the video and the chat lifts the rest; using the chat
+  // (clicking in it, typing) lifts nothing.
   const dimLevel = () => clamp(settings.dim ?? DEFAULTS.dim, 30, 100) / 100;
   const peekLevel = () => dimLevel() * 0.5;
   const peekMs = () => clamp(settings.peekSeconds ?? DEFAULTS.peekSeconds, 1, 10) * 1000;
+  const separateChat = () => !!settings.chatDimSeparate;
+  const chatDimLevel = () => clamp(settings.chatDim ?? DEFAULTS.chatDim, 0, 100) / 100;
+  // While writing a message, the lights stay partly up (see peek), unless
+  // the chat has its own dark.
+  const restingLevel = () => (typing() && !separateChat() ? peekLevel() : dimLevel());
   let lightsOn = false;
   let peekTimer = 0;
   let scrim = null;
+  let chatScrim = null;
   let followTimer = 0;
 
   function ensureScrim() {
     if (scrim) return scrim;
     scrim = document.createElement("div");
     scrim.className = "cp-scrim";
-    document.body.appendChild(scrim);
+    chatScrim = document.createElement("div");
+    chatScrim.className = "cp-chat-scrim";
+    chatScrim.style.display = "none";
+    document.body.append(scrim, chatScrim);
     return scrim;
   }
 
@@ -992,6 +1179,7 @@
     const r = box && box.getBoundingClientRect();
     if (!r || r.width === 0 || document.fullscreenElement) {
       scrim.style.display = "none";
+      chatScrim.style.display = "none";
       return;
     }
     scrim.style.display = "";
@@ -1008,6 +1196,66 @@
     scrim.style.borderRadius = top > r.top
       ? `0 0 ${cs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}`
       : cs.borderRadius;
+    placeChatHole(r.left, top, r);
+  }
+
+  // Dimming the chat on its own: the chat is cut out of the dark around the
+  // video (the box's shadow), and has a box of its own over it, with its own
+  // darkness. Skipped if the chat sits over the video (a channel's layout),
+  // where its box would dim the video too.
+  function placeChatHole(scrimLeft, scrimTop, video) {
+    const chat = separateChat() ? chatArea() : null;
+    const top = chat ? Math.max(chat.top, topBarBottom()) : 0;
+    const overVideo = chat && chat.left < video.right && chat.right > video.left && top < video.bottom && chat.bottom > video.top;
+    if (!chat || overVideo || chat.bottom <= top) {
+      scrim.style.clipPath = "";
+      chatScrim.style.display = "none";
+      return;
+    }
+    const w = chat.right - chat.left;
+    const h = chat.bottom - top;
+    // Its corners: square at the top, under the chat's header, and at the
+    // bottom the chat's own (the Polished look rounds them; the header's
+    // are the same).
+    const header = document.getElementById("chatheader");
+    const radius = Math.min(parseFloat(header ? getComputedStyle(header).borderTopLeftRadius : "") || 0, w / 2, h / 2);
+    const far = 100000;
+    scrim.style.clipPath = `path(evenodd, "M ${-far} ${-far} H ${far} V ${far} H ${-far} Z ` +
+      roundedRect(chat.left - scrimLeft, top - scrimTop, w, h, 0, radius) + '")';
+    Object.assign(chatScrim.style, {
+      display: "",
+      left: chat.left + "px",
+      top: top + "px",
+      width: w + "px",
+      height: h + "px",
+      borderRadius: `0 0 ${radius}px ${radius}px`,
+    });
+  }
+
+  // The part of the chat that's read: the user list, messages and message
+  // box. Its header ("36 connected users") is dimmed with the page.
+  function chatArea() {
+    const wrap = document.getElementById("chatwrap");
+    if (!wrap) return null;
+    let area = null;
+    for (const el of wrap.children) {
+      if (el.id === "chatheader") continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      area = area
+        ? { left: Math.min(area.left, r.left), top: Math.min(area.top, r.top), right: Math.max(area.right, r.right), bottom: Math.max(area.bottom, r.bottom) }
+        : { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    }
+    return area;
+  }
+
+  // A rectangle with round corners (rt at the top, rb at the bottom), as a
+  // path for clip-path.
+  function roundedRect(x, y, w, h, rt, rb) {
+    const n = (v) => Math.round(v * 100) / 100;
+    return `M ${n(x + rt)} ${n(y)} H ${n(x + w - rt)} A ${rt} ${rt} 0 0 1 ${n(x + w)} ${n(y + rt)} ` +
+      `V ${n(y + h - rb)} A ${rb} ${rb} 0 0 1 ${n(x + w - rb)} ${n(y + h)} H ${n(x + rb)} ` +
+      `A ${rb} ${rb} 0 0 1 ${n(x)} ${n(y + h - rb)} V ${n(y + rt)} A ${rt} ${rt} 0 0 1 ${n(x + rt)} ${n(y)} Z`;
   }
 
   // The bottom edge of CyTube's top bar while it's fixed to the top of the
@@ -1021,10 +1269,14 @@
     return b.height > 0 && b.top <= 1 ? b.bottom : 0;
   }
 
+  // The chat's own dark (when it has one) doesn't lift: it's either on or
+  // off with the rest.
   function setDarkness(alpha, ms, easing) {
     ensureScrim();
     scrim.style.transition = `box-shadow ${ms}ms ${easing}`;
     scrim.style.boxShadow = `0 0 0 200vmax rgba(0, 0, 0, ${alpha})`;
+    chatScrim.style.transition = `background-color ${ms}ms ${easing}`;
+    chatScrim.style.backgroundColor = `rgba(0, 0, 0, ${alpha > 0 ? chatDimLevel() : 0})`;
   }
 
   function typing() {
@@ -1042,14 +1294,19 @@
       // The video moves when things above it open or close; a cheap check
       // twice a second keeps the hole on it.
       followTimer = setInterval(placeScrim, 500);
-      setDarkness(typing() ? peekLevel() : dimLevel(), 350, "ease-in-out");
+      setDarkness(restingLevel(), 350, "ease-in-out");
     } else {
       clearInterval(followTimer);
       if (scrim) {
         setDarkness(0, 220, "ease-out");
         const fading = scrim;
         setTimeout(() => {
-          if (!lightsOn && scrim === fading) { scrim.remove(); scrim = null; }
+          if (!lightsOn && scrim === fading) {
+            scrim.remove();
+            chatScrim.remove();
+            scrim = null;
+            chatScrim = null;
+          }
         }, 260);
       }
     }
@@ -1062,20 +1319,25 @@
     setDarkness(peekLevel(), 450, PEEK_EASING);
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => {
-      if (lightsOn && !typing()) setDarkness(dimLevel(), 600, PEEK_EASING);
+      if (lightsOn) setDarkness(restingLevel(), 600, PEEK_EASING);
     }, peekMs());
   }
 
   document.addEventListener("pointerdown", (e) => {
     if (!lightsOn || (e.target instanceof Element && e.target.closest(".cp-btn"))) return;
-    const box = videoBox();
-    const r = box && box.getBoundingClientRect();
-    if (r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    const inside = (r) => !!r && r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (inside(videoBox()?.getBoundingClientRect())) return;
+    // The chat's own dark doesn't lift, and using the chat (its header too)
+    // lifts nothing.
+    if (separateChat() && e.target instanceof Element && e.target.closest("#chatwrap")) return;
     peek();
   }, true);
-  // Writing a message: the lights stay partly up until you're done.
-  document.addEventListener("focusin", () => { if (lightsOn && typing()) peek(); });
-  document.addEventListener("focusout", () => { if (lightsOn) setTimeout(() => { if (!typing()) peek(); }, 0); });
+  // Writing a message: the lights stay partly up until you're done (unless
+  // the chat has its own dark).
+  document.addEventListener("focusin", () => { if (lightsOn && !separateChat() && typing()) peek(); });
+  document.addEventListener("focusout", () => {
+    if (lightsOn && !separateChat()) setTimeout(() => { if (!typing()) peek(); }, 0);
+  });
   window.addEventListener("resize", () => lightsOn && placeScrim());
   window.addEventListener("scroll", () => lightsOn && placeScrim(), { passive: true });
   document.addEventListener("fullscreenchange", () => lightsOn && placeScrim());
@@ -1167,6 +1429,9 @@
 
   // (The look and the buttons come once the settings are in: see refresh.)
   watchChat();
+  watchChatScroll();
+  watchChatWidth();
+  watchPms();
   watchUserlist();
   watchPolls();
   watchStyles();

@@ -6,7 +6,7 @@ const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton:
 const SHOW = {
   nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
   dim: (v) => v + "%",
-  peekSeconds: (v) => v + (v === 1 ? " second" : " seconds"),
+  peekSeconds: (v) => (v === 0 ? "Off" : v + (v === 1 ? " second" : " seconds")),
   chatDim: (v) => v + "%",
 };
 const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];

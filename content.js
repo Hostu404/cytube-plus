@@ -1139,7 +1139,8 @@
 
   // How dark the page around the video goes (90% unless changed in the
   // popup), how much of that a click outside the video lifts (half), and
-  // for how long (4 seconds unless changed).
+  // for how long (4 seconds unless changed; 0 means it never lifts, nor
+  // while typing).
   //
   // With "Dim the chat separately", the chat has a dark of its own (40%
   // unless changed), light enough to read, which never lifts. A click
@@ -1147,12 +1148,13 @@
   // (clicking in it, typing) lifts nothing.
   const dimLevel = () => clamp(settings.dim ?? DEFAULTS.dim, 30, 100) / 100;
   const peekLevel = () => dimLevel() * 0.5;
-  const peekMs = () => clamp(settings.peekSeconds ?? DEFAULTS.peekSeconds, 1, 10) * 1000;
+  const peekMs = () => clamp(settings.peekSeconds ?? DEFAULTS.peekSeconds, 0, 10) * 1000;
+  const lifts = () => peekMs() > 0;
   const separateChat = () => !!settings.chatDimSeparate;
   const chatDimLevel = () => clamp(settings.chatDim ?? DEFAULTS.chatDim, 0, 100) / 100;
   // While writing a message, the lights stay partly up (see peek), unless
   // the chat has its own dark.
-  const restingLevel = () => (typing() && !separateChat() ? peekLevel() : dimLevel());
+  const restingLevel = () => (typing() && !separateChat() && lifts() ? peekLevel() : dimLevel());
   let lightsOn = false;
   let peekTimer = 0;
   let scrim = null;
@@ -1316,6 +1318,7 @@
   const PEEK_EASING = "cubic-bezier(0.37, 0, 0.63, 1)";
 
   function peek() {
+    if (!lifts()) return;
     setDarkness(peekLevel(), 450, PEEK_EASING);
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => {

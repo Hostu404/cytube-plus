@@ -2,7 +2,7 @@
 
 A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
 ## Screenshots
-<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/5cbdd8d5-1e5e-4938-aea8-f545a0e77f1f" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
 
 
 
@@ -19,8 +19,8 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   out. CyTube's own PM windows work as usual.
 - **Lights down**: the bulb button under the video dims the rest of the
   page (90% by default). Click outside the video to lift the dark for a
-  few seconds. How dark it goes and how long it lifts for can be changed
-  in the toolbar popup. With **Dim the chat separately** on, the chat gets
+  few seconds. How dark it goes and how long it lifts for (or whether it
+  lifts at all) can be changed in the toolbar popup. With **Dim the chat separately** on, the chat gets
   a lighter dark of its own (40% by default, adjustable) that stays put,
   so it's always readable. The rest of the page then lifts only for a
   click outside both the video and the chat, not while you type. The

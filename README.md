@@ -2,7 +2,8 @@
 
 A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
 ## Screenshots
-<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/376e732a-91e7-4678-a33a-baf55edfe1a0" />
+
 
 
 
@@ -60,7 +61,7 @@ What's changed in each version is on the
 
 ## Installing on Firefox
 
-**From Firefox Add-ons** (recommended: it updates itself) (Currently awaiting Mozillas approval)
+**From Firefox Add-ons** (Pending Mozillas approval)
 
 Open https://addons.mozilla.org/firefox/addon/cytube-plus/ in Firefox and
 click **Add to Firefox**. On Android, open the same page in Firefox for
@@ -82,7 +83,7 @@ Needs Firefox 140 or newer (desktop) or 142 (Android).
 
 ## Installing on Chrome, Edge, Brave or Opera
 
-**From the Chrome Web Store** (it updates itself)
+**From the Chrome Web Store** 
 
 Open the [CyTube Plus page on the Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) and click
 **Add to Chrome**. Edge, Brave and Opera install it from the same page

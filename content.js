@@ -185,24 +185,45 @@
           if (node.tagName === "STYLE" || node.tagName === "LINK") styles = true;
         }
         for (const node of m.addedNodes) {
-          if (node instanceof Element && node.tagName === "LINK") node.addEventListener("load", recolourAll, { once: true });
+          if (node instanceof Element && node.tagName === "LINK") node.addEventListener("load", stylesChanged, { once: true });
         }
         if (m.target !== polishedStyle && (m.type === "characterData" || m.target.nodeName === "STYLE")) styles = true;
       }
       if (theme) placePolished();
-      if (styles || theme) {
-        recolourAll();
-        // The channel's CSS can change how big it shows emotes. It has
-        // already moved the chat by now, so whether it was following the
-        // newest message comes from how it was last scrolled.
-        if (settings.emoteSizes) {
-          const follow = chatFollowing;
-          sizeAllMessages();
-          const buffer = chatBuffer();
-          if (follow && buffer) buffer.scrollTop = buffer.scrollHeight;
-        }
-      }
+      if (styles || theme) stylesChanged();
     }).observe(document.head, { childList: true, subtree: true, characterData: true });
+  }
+
+  // What the page's styles changing means for the add-on, done once a frame
+  // however many styles change at once (before the frame is drawn, so
+  // nothing shows in between).
+  let stylesQueued = false;
+
+  function stylesChanged() {
+    if (stylesQueued) return;
+    stylesQueued = true;
+    requestAnimationFrame(() => {
+      stylesQueued = false;
+      // Name colours are made readable against the chat's background, so
+      // they're redone if that changed; otherwise only staff colours (from
+      // the user list, which the channel's CSS may colour) are checked.
+      const background = findChatBackground();
+      if (!chatBackground || ["r", "g", "b"].some((k) => background[k] !== chatBackground[k])) {
+        recolourAll();
+      } else {
+        userIndex = null;
+        refreshNameColours();
+      }
+      // The channel's CSS can change how big it shows emotes. It has
+      // already moved the chat by now, so whether it was following the
+      // newest message comes from how it was last scrolled.
+      if (settings.emoteSizes) {
+        const follow = chatFollowing;
+        sizeAllMessages();
+        const buffer = chatBuffer();
+        if (follow && buffer) buffer.scrollTop = buffer.scrollHeight;
+      }
+    });
   }
 
   function watchPolls() {
@@ -304,14 +325,32 @@
   const STAFF = ["userlist_op", "userlist_owner", "userlist_siteadmin"];
   const staffColours = new Map();   // lower-case name -> colour
 
+  // Who's in the user list, by lower-case name: their name tag if they're
+  // staff, null if not. Made once when needed, and thrown away whenever the
+  // list (or the page's styles) change, rather than searching the whole list
+  // for every message: a busy channel has hundreds of people in it.
+  let userIndex = null;
+
+  function usersByName() {
+    if (!userIndex) {
+      userIndex = new Map();
+      for (const item of document.querySelectorAll("#userlist .userlist_item")) {
+        const tag = item.children[1];
+        if (!tag) continue;
+        const lower = tag.textContent.trim().toLowerCase();
+        if (!userIndex.has(lower)) userIndex.set(lower, STAFF.some((c) => tag.classList.contains(c)) ? { tag, colour: null } : null);
+      }
+    }
+    return userIndex;
+  }
+
   function nameColour(name) {
     const lower = name.toLowerCase();
-    for (const item of document.querySelectorAll("#userlist .userlist_item")) {
-      const tag = item.children[1];
-      if (!tag || tag.textContent.trim().toLowerCase() !== lower) continue;
-      if (STAFF.some((c) => tag.classList.contains(c))) staffColours.set(lower, getComputedStyle(tag).color);
+    const users = usersByName();
+    if (users.has(lower)) {
+      const staff = users.get(lower);
+      if (staff) staffColours.set(lower, staff.colour ??= getComputedStyle(staff.tag).color);
       else staffColours.delete(lower);
-      break;
     }
     return staffColours.get(lower) ?? colourFor(name);
   }
@@ -359,7 +398,20 @@
     }
     colourCache.clear();
     chatBackground = null;
+    userIndex = null;
     if (settings.colourNames) for (const div of buffer.children) colourName(div);
+  }
+
+  // Names already in chat, after the user list (or the page's styles)
+  // changed: only those whose colour has changed are touched.
+  function refreshNameColours() {
+    const buffer = document.getElementById("messagebuffer");
+    if (!buffer || !settings.colourNames) return;
+    for (const strong of buffer.querySelectorAll("strong.username")) {
+      if (!ourColour.has(strong) || !stillOurs(strong)) continue;
+      const colour = nameColour(nameOf(strong));
+      if (colour !== ourColour.get(strong).given) giveColour(strong, colour);
+    }
   }
 
   // Someone joining, leaving or changing rank: names already in chat follow
@@ -369,17 +421,9 @@
     const buffer = document.getElementById("messagebuffer");
     if (!list || !buffer) return;
     let timer = 0;
-    const update = () => {
-      timer = 0;
-      if (!settings.colourNames) return;
-      for (const strong of buffer.querySelectorAll("strong.username")) {
-        if (!ourColour.has(strong) || !stillOurs(strong)) continue;
-        const colour = nameColour(nameOf(strong));
-        if (colour !== ourColour.get(strong).given) giveColour(strong, colour);
-      }
-    };
     new MutationObserver(() => {
-      if (!timer) timer = setTimeout(update, 300);
+      userIndex = null;
+      if (!timer) timer = setTimeout(() => { timer = 0; refreshNameColours(); }, 300);
     }).observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   }
 
@@ -933,20 +977,35 @@
   // All undone, then all measured, then the big ones shrunk: measuring
   // between changes would have the browser lay the page out again for each
   // emote (a joining chat brings a hundred messages at once).
+  //
+  // An emote that's still loading can't be measured yet, but a big one
+  // starts showing while it downloads, so until it has loaded it gets the
+  // limit as a maximum height (or the page's own, if that's smaller: a
+  // maximum never makes anything bigger). Once loaded, it's measured
+  // without that and sized as usual, before the next frame is drawn.
   function sizeEmotes(emotes) {
     for (const emote of emotes) {
-      if (!emote.dataset.cpShrunk) continue;
-      emote.style.removeProperty("height");
-      emote.style.removeProperty("width");
-      emote.style.removeProperty("object-fit");
-      delete emote.dataset.cpShrunk;
+      if (emote.dataset.cpShrunk) {
+        emote.style.removeProperty("height");
+        emote.style.removeProperty("width");
+        emote.style.removeProperty("object-fit");
+        delete emote.dataset.cpShrunk;
+      }
+      if (emote.dataset.cpLoading) {
+        emote.style.removeProperty("max-height");
+        emote.style.removeProperty("object-fit");
+        delete emote.dataset.cpLoading;
+      }
     }
     if (!settings.emoteSizes) return;
     const shrink = [];
+    const loading = [];
     for (const emote of emotes) {
+      const limit = emote.closest(".cp-emote-only") ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
       const video = emote instanceof HTMLVideoElement;
       if (video ? emote.readyState < 1 : !emote.complete) {
-        // Its size is known once it has loaded.
+        const own = parseFloat(getComputedStyle(emote).maxHeight);
+        loading.push([emote, Number.isFinite(own) ? Math.min(own, limit) : limit]);
         if (waitingToLoad.has(emote)) continue;
         waitingToLoad.add(emote);
         emote.addEventListener(video ? "loadedmetadata" : "load", () => {
@@ -955,7 +1014,6 @@
         }, { once: true });
         continue;
       }
-      const limit = emote.closest(".cp-emote-only") ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
       if (shownHeight(emote) > limit) shrink.push([emote, limit]);
     }
     for (const [emote, limit] of shrink) {
@@ -963,6 +1021,11 @@
       emote.style.setProperty("width", "auto", "important");
       emote.style.setProperty("object-fit", "contain", "important");
       emote.dataset.cpShrunk = "1";
+    }
+    for (const [emote, max] of loading) {
+      emote.style.setProperty("max-height", max + "px", "important");
+      emote.style.setProperty("object-fit", "contain", "important");
+      emote.dataset.cpLoading = "1";
     }
   }
 
@@ -1341,8 +1404,18 @@
   document.addEventListener("focusout", () => {
     if (lightsOn && !separateChat()) setTimeout(() => { if (!typing()) peek(); }, 0);
   });
-  window.addEventListener("resize", () => lightsOn && placeScrim());
-  window.addEventListener("scroll", () => lightsOn && placeScrim(), { passive: true });
+  // Scrolling and resizing fire many times a frame: placed once a frame.
+  let placeQueued = false;
+  function placeScrimSoon() {
+    if (!lightsOn || placeQueued) return;
+    placeQueued = true;
+    requestAnimationFrame(() => {
+      placeQueued = false;
+      if (lightsOn) placeScrim();
+    });
+  }
+  window.addEventListener("resize", placeScrimSoon);
+  window.addEventListener("scroll", placeScrimSoon, { passive: true });
   document.addEventListener("fullscreenchange", () => lightsOn && placeScrim());
 
   // ---- buttons --------------------------------------------------------------

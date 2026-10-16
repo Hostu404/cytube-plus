@@ -19,7 +19,8 @@
 //    emotes; none ever gets bigger.
 //  - Turn off sync (in the popup, off to start with): pause and skip the
 //    video on your own, or click a title in the playlist or search results
-//    to watch it; a bar under the video puts you back in sync (sync-page.js
+//    to watch it; a bar under the video puts you back in sync, and has a
+//    searchable list of the playlist when the channel hides it (sync-page.js
 //    does the syncing part, in the page).
 //
 // It does nothing at all on blacklisted channels (the blacklist is edited
@@ -1512,10 +1513,15 @@
 
   // sync-page.js, in the page, does the syncing; this keeps the bar under
   // the video up to date with what it says.
-  let syncState = { synced: true, ended: false, pickTitle: "", roomTitle: "" };
+  let syncState = { synced: true, ended: false, pickTitle: "", roomTitle: "", listHidden: false, list: null };
   let syncBar = null;
   let syncNotice = "";
   let noticeTimer = 0;
+  // The bar's own list of the playlist, for channels that hide theirs.
+  let listOpen = false;
+  let listQuery = "";
+  let listShown = "";      // what the list was last drawn from
+  let listScrolled = false;
 
   const NOTICES = {
     leader: "You're the leader: the room follows your video, so you stay in sync.",
@@ -1542,6 +1548,9 @@
       clearTimeout(noticeTimer);
       syncNotice = "";
     }
+    // Back in sync, or the channel's playlist showing again: the bar's own
+    // list goes.
+    if (listOpen && (syncState.synced || !syncState.listHidden)) setListOpen(false);
     updateSyncBar();
   });
 
@@ -1552,32 +1561,20 @@
     if (syncState.synced && !syncNotice) {
       syncBar?.remove();
       syncBar = null;
+      setListOpen(false);
       return;
     }
-    if (!syncBar) {
-      syncBar = document.createElement("div");
-      syncBar.id = "cytube-plus-sync-bar";
-      syncBar.setAttribute("role", "status");
-      const text = document.createElement("span");
-      text.className = "cp-sync-text";
-      const back = document.createElement("button");
-      back.type = "button";
-      back.className = "btn btn-xs btn-default cp-sync-back";
-      back.textContent = "Back in sync";
-      // Back in sync turns the setting off again, here and in the popup.
-      back.addEventListener("click", () => {
-        settings.syncOff = false;
-        saveSettings();
-        applySettings(settings.nico);
-      });
-      syncBar.append(text, back);
-    }
+    if (!syncBar) syncBar = makeSyncBar();
     const wrap = document.getElementById("videowrap");
     const video = wrap?.querySelector(":scope > .embed-responsive");
     if (video && syncBar.previousElementSibling !== video) video.after(syncBar);
     else if (!video && wrap && !syncBar.isConnected) wrap.appendChild(syncBar);
     const text = syncBar.querySelector(".cp-sync-text");
     syncBar.querySelector(".cp-sync-back").style.display = syncState.synced ? "none" : "";
+    const listBtn = syncBar.querySelector(".cp-sync-list-btn");
+    listBtn.style.display = !syncState.synced && syncState.listHidden ? "" : "none";
+    listBtn.classList.toggle("active", listOpen);
+    listBtn.setAttribute("aria-expanded", String(listOpen));
     const parts = [];
     if (syncNotice) {
       parts.push(syncNotice);
@@ -1585,6 +1582,8 @@
       parts.push(bold("That was the last one."));
     } else if (syncState.pickTitle) {
       parts.push(bold("Watching on your own: "), syncState.pickTitle + ".");
+    } else if (syncState.listHidden) {
+      parts.push(bold("Sync is off."), " Pause and skip as you like, or pick a title from the playlist to watch it.");
     } else {
       parts.push(bold("Sync is off."), " Pause and skip as you like, or click a title in the playlist to watch it.");
     }
@@ -1592,6 +1591,196 @@
       parts.push(" The room is on " + syncState.roomTitle + ".");
     }
     text.replaceChildren(...parts);
+    if (listOpen) drawList();
+  }
+
+  function makeSyncBar() {
+    const bar = document.createElement("div");
+    bar.id = "cytube-plus-sync-bar";
+    const text = document.createElement("span");
+    text.className = "cp-sync-text";
+    text.setAttribute("role", "status");
+    const listBtn = document.createElement("button");
+    listBtn.type = "button";
+    listBtn.className = "btn btn-xs btn-default cp-sync-list-btn";
+    listBtn.textContent = "Playlist";
+    listBtn.title = "This channel hides its playlist: pick from it here";
+    listBtn.setAttribute("aria-controls", "cytube-plus-sync-list");
+    listBtn.addEventListener("click", () => {
+      setListOpen(!listOpen);
+      updateSyncBar();
+      if (listOpen) listPanel.querySelector(".cp-sync-search").focus();
+    });
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "btn btn-xs btn-default cp-sync-back";
+    back.textContent = "Back in sync";
+    // Back in sync turns the setting off again, here and in the popup.
+    back.addEventListener("click", () => {
+      settings.syncOff = false;
+      saveSettings();
+      applySettings(settings.nico);
+    });
+    bar.append(text, listBtn, back);
+    return bar;
+  }
+
+  // The list floats over the page next to the bar, rather than sitting in
+  // the channel's layout: a channel that sizes the video to fit the window
+  // would otherwise squash the video to make room for it.
+  let listPanel = null;
+
+  function makeListPanel() {
+    const panel = document.createElement("div");
+    panel.id = "cytube-plus-sync-list";
+    panel.hidden = true;
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "cp-sync-search";
+    search.placeholder = "Search the playlist";
+    search.setAttribute("aria-label", "Search the playlist");
+    search.autocomplete = "off";
+    search.spellcheck = false;
+    search.addEventListener("input", () => {
+      listQuery = search.value;
+      drawList(true);
+    });
+    // Enter plays the first match; Escape closes the list.
+    search.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        panel.querySelector(".cp-sync-item")?.click();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setListOpen(false);
+        updateSyncBar();
+        syncBar?.querySelector(".cp-sync-list-btn")?.focus();
+      }
+    });
+    const list = document.createElement("div");
+    list.className = "cp-sync-items";
+    list.setAttribute("role", "list");
+    list.addEventListener("click", (e) => {
+      const item = e.target instanceof Element && e.target.closest(".cp-sync-item");
+      if (!item) return;
+      toPage({ action: "pick", uid: Number(item.dataset.uid) });
+      setListOpen(false);
+      updateSyncBar();
+    });
+    panel.append(search, list);
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function setListOpen(open) {
+    if (!open && !listOpen) return;
+    listOpen = open;
+    listShown = "";
+    listScrolled = false;
+    if (open && !listPanel) listPanel = makeListPanel();
+    if (listPanel) {
+      listPanel.hidden = !open;
+      listPanel.querySelector(".cp-sync-search").value = listQuery;
+    }
+    lastPlace = "";
+    if (open) {
+      // Placed (and so sized) before the titles come in, so the one you're
+      // on can be scrolled to.
+      placeList();
+      requestAnimationFrame(followBar);
+    }
+    toPage({ action: "list", open });
+  }
+
+  // It follows the bar wherever the page moves it, while it's open.
+  let lastPlace = "";
+  function followBar() {
+    if (!listOpen) return;
+    placeList();
+    requestAnimationFrame(followBar);
+  }
+
+  // Under the bar, as wide as it, or above it when there's more room there.
+  function placeList() {
+    if (!listOpen || !listPanel || !syncBar?.isConnected) return;
+    const bar = syncBar.getBoundingClientRect();
+    if (!bar.width) {
+      setListOpen(false);
+      return;
+    }
+    const gap = 6;
+    const below = innerHeight - bar.bottom - gap - 8;
+    const above = bar.top - gap - 8;
+    const width = Math.max(bar.width, 280);
+    const left = Math.min(Math.max(8, bar.left), Math.max(8, innerWidth - width - 8));
+    const down = below >= 240 || below >= above;
+    const room = Math.max(120, Math.min(420, down ? below : above));
+    const place = [left, width, room, down, bar.top, bar.bottom].join();
+    if (place === lastPlace) return;
+    lastPlace = place;
+    Object.assign(listPanel.style, {
+      left: left + "px",
+      width: width + "px",
+      maxHeight: room + "px",
+      top: down ? bar.bottom + gap + "px" : "",
+      bottom: down ? "" : innerHeight - bar.top + gap + "px",
+    });
+  }
+  // A click anywhere else closes it.
+  document.addEventListener("pointerdown", (e) => {
+    if (!listOpen || !(e.target instanceof Node)) return;
+    if (listPanel?.contains(e.target) || syncBar?.querySelector(".cp-sync-list-btn")?.contains(e.target)) return;
+    setListOpen(false);
+    updateSyncBar();
+  }, true);
+
+  // Every word typed has to be somewhere in the title, in any order, with
+  // or without accents.
+  const fold = (t) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  function drawList(force = false) {
+    const items = Array.isArray(syncState.list) ? syncState.list : null;
+    const box = listPanel?.querySelector(".cp-sync-items");
+    if (!box || !items) return;
+    const key = JSON.stringify(items) + "\n" + listQuery;
+    if (!force && key === listShown) return;
+    listShown = key;
+    const words = fold(listQuery).split(/\s+/).filter(Boolean);
+    const rows = [];
+    for (const item of items) {
+      const title = String(item.title);
+      if (words.length && !words.every((w) => fold(title).includes(w))) continue;
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "cp-sync-item";
+      row.setAttribute("role", "listitem");
+      row.dataset.uid = String(item.uid);
+      row.classList.toggle("cp-room", !!item.room);
+      row.classList.toggle("cp-picked", !!item.picked);
+      const name = document.createElement("span");
+      name.className = "cp-sync-item-title";
+      name.textContent = title;
+      const time = document.createElement("span");
+      time.className = "cp-sync-item-time";
+      time.textContent = (item.room ? "Room · " : "") + String(item.duration);
+      row.append(name, time);
+      rows.push(row);
+    }
+    if (!rows.length) {
+      const none = document.createElement("p");
+      none.className = "cp-sync-none";
+      none.textContent = items.length ? "No titles match." : "The playlist is empty.";
+      rows.push(none);
+    }
+    const top = box.scrollTop;
+    box.replaceChildren(...rows);
+    box.scrollTop = top;
+    // On opening, what you're watching (or the room's video) is in view.
+    if (!listScrolled) {
+      listScrolled = true;
+      const at = box.querySelector(".cp-picked") || box.querySelector(".cp-room");
+      if (at) box.scrollTop = at.offsetTop - box.clientHeight / 2 + at.offsetHeight / 2;
+    }
   }
 
   function bold(t) {

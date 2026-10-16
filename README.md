@@ -9,7 +9,6 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 
 
 
-
 ## Features
 
 - **Polished look**: the video, the buttons under it, the playlist, the
@@ -18,7 +17,7 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   A long chat message wraps in its own column beside the time and name,
   so its second line starts under its first word, not under the time
   (on a chat wide enough for it). The rest of the page is left alone.
-  It also makes the chat, user list, private messages and long playlists
+  It also makes the chat, private messages and long playlists
   less work for the browser to draw, which you can't see but helps busy
   channels run smoothly.
 - **Coloured names**: each name in chat gets its own colour.
@@ -50,7 +49,9 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   playlist, or in search results, and it plays just for you, from the
   start; when it ends, the next one down plays, until the end of that
   list. The room carries on without you, and a bar under the video says
-  what you're watching and what the room's on. **Back in sync** on the bar
+  what you're watching and what the room's on. If the channel hides its
+  playlist, a **Playlist** button on the bar opens a searchable list of it
+  to pick from instead. **Back in sync** on the bar
   takes you straight back to the room's video, where the room is, and
   turns the setting off again. Ctrl+click or a middle click still opens a
   title's link in a new tab. The playlist leader stays in sync, as the

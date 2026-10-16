@@ -151,20 +151,126 @@
   min-width: 0;
 }
 
-#cytube-plus-sync-bar .cp-sync-back {
+#cytube-plus-sync-bar .cp-sync-back,
+#cytube-plus-sync-bar .cp-sync-list-btn {
   flex: none;
 }
 
-.cytube-plus-unsynced :is(#queue, #library) > li.cp-picked {
-  background-color: rgba(127, 178, 229, 0.16);
-  background-image: linear-gradient(#7fb2e5, #7fb2e5);
-  background-size: 3px 100%;
-  background-repeat: no-repeat;
+/* A channel that hides its playlist: the bar's own list of it, to search
+   and pick from. It floats over the page by the bar (content.js places
+   it), so it takes no room from the channel's layout. */
+#cytube-plus-sync-list {
+  position: fixed;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid rgba(127, 178, 229, 0.35);
+  border-radius: 8px;
+  background-color: #1b1f24;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  color: #e3e6e9;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
 }
 
-.cytube-plus-unsynced :is(#queue, #library) > li.cp-picked .qe_title::before {
+#cytube-plus-sync-list[hidden] {
+  display: none !important;
+}
+
+#cytube-plus-sync-list .cp-sync-search {
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid rgba(127, 178, 229, 0.35);
+  border-radius: 6px;
+  background-color: rgba(127, 178, 229, 0.08);
+  color: inherit;
+  font: inherit;
+  box-shadow: none;
+}
+
+#cytube-plus-sync-list .cp-sync-search:focus {
+  border-color: #7fb2e5;
+  outline: none;
+}
+
+#cytube-plus-sync-list .cp-sync-search::placeholder {
+  color: rgba(227, 230, 233, 0.5);
+}
+
+#cytube-plus-sync-list .cp-sync-items {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+#cytube-plus-sync-list .cp-sync-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 5px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: left;
+  text-shadow: none;
+  cursor: pointer;
+}
+
+#cytube-plus-sync-list .cp-sync-item:hover,
+#cytube-plus-sync-list .cp-sync-item:focus-visible {
+  background-color: rgba(127, 178, 229, 0.18);
+  outline: none;
+}
+
+#cytube-plus-sync-list .cp-sync-item.cp-room {
+  box-shadow: inset 3px 0 0 rgba(127, 178, 229, 0.45);
+}
+
+#cytube-plus-sync-list .cp-sync-item.cp-picked {
+  background-color: rgba(127, 178, 229, 0.16);
+  box-shadow: inset 3px 0 0 #7fb2e5;
+}
+
+#cytube-plus-sync-list .cp-sync-item.cp-picked .cp-sync-item-title::before {
   content: "\25B6\00A0";
   color: #7fb2e5;
+}
+
+#cytube-plus-sync-list .cp-sync-item-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#cytube-plus-sync-list .cp-sync-item-time {
+  flex: none;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+#cytube-plus-sync-list .cp-sync-none {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 /* Out of sync, the room's own video in the playlist says so, next to the

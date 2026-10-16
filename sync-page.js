@@ -44,12 +44,15 @@
   let listWatch = null;
   let lastTime = -1;
   let stuck = 0;
+  let listOpen = false;    // the bar's own list of the playlist is open
+  let lastHidden = false;
 
   const $ = () => window.jQuery;
   const hasVideo = () => !!document.getElementById("videowrap") && !document.body.classList.contains("chatOnly");
   const isLeader = () => !!(window.CLIENT && window.CLIENT.leader);
 
   function tell(refused = "") {
+    lastHidden = !synced && listHidden();
     document.dispatchEvent(new CustomEvent(TO_ADDON, {
       detail: JSON.stringify({
         refused,
@@ -57,6 +60,8 @@
         ended,
         pickTitle: pick ? String(pick.media.title || "") : "",
         roomTitle: roomTitle(),
+        listHidden: lastHidden,
+        list: !synced && listOpen ? listItems() : null,
       }),
     }));
   }
@@ -105,6 +110,7 @@
     ended = false;
     unwrapHandlers();
     document.documentElement.classList.remove("cytube-plus-unsynced");
+    listOpen = false;
     markPick();
     listWatch?.disconnect();
     listWatch = null;
@@ -147,6 +153,47 @@
       originals = null;
       ours = null;
     }
+  }
+
+  // ---- a playlist the channel hides --------------------------------------------
+
+  // Some channels' scripts or CSS hide the playlist (or move it somewhere it
+  // can't be seen). CyTube still keeps it in the page, so then the bar under
+  // the video offers a list of its own to pick from (content.js draws it),
+  // and the channel's layout is left as it is.
+  function listHidden() {
+    const queue = document.getElementById("queue");
+    if (!queue) return false;
+    if (!queue.children.length) return false;  // nothing to pick anyway
+    if (!queue.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true;
+    const r = queue.getBoundingClientRect();
+    if (r.width < 40 || r.height < 8) return true;
+    // Off the page altogether.
+    const page = document.documentElement;
+    const left = r.left + scrollX;
+    const top = r.top + scrollY;
+    if (left + r.width <= 0 || top + r.height <= 0 || left >= page.scrollWidth || top >= page.scrollHeight) return true;
+    // Inside a box that's been squashed to nothing, with the rest cut off.
+    for (let el = queue.parentElement; el && el !== document.body; el = el.parentElement) {
+      const cs = getComputedStyle(el);
+      if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+      const b = el.getBoundingClientRect();
+      if (b.width < 40 || b.height < 8) return true;
+    }
+    return false;
+  }
+
+  function listItems() {
+    return [...document.querySelectorAll("#queue > li")].map((li) => {
+      const media = mediaOf(li) || {};
+      return {
+        uid: $()?.(li).data("uid"),
+        title: String(media.title || ""),
+        duration: String(media.duration || ""),
+        room: li.classList.contains("queue_active"),
+        picked: isPick(li),
+      };
+    }).filter((item) => item.uid !== undefined);
   }
 
   // ---- picks ------------------------------------------------------------------
@@ -265,6 +312,8 @@
   // short of it, as some players stop), the next pick plays.
   function everySecond() {
     settle();
+    // A channel's script can hide or show its playlist at any time.
+    if (!synced && listHidden() !== lastHidden) tell();
     const player = window.PLAYER;
     if (synced || !pick || ended || !player || typeof player.getTime !== "function") return;
     const length = Number(player.mediaLength) || Number(pick.media.seconds) || 0;
@@ -331,8 +380,18 @@
     let msg;
     try { msg = JSON.parse(e.detail); } catch (err) { return; }
     if (!msg || typeof msg.action !== "string") return;
-    if (msg.action === "syncOff") setWanted(!!msg.on);
-    else if (msg.action === "state") tell();
+    if (msg.action === "syncOff") {
+      setWanted(!!msg.on);
+    } else if (msg.action === "state") {
+      tell();
+    } else if (msg.action === "list") {
+      listOpen = !!msg.open;
+      tell();
+    } else if (msg.action === "pick" && !synced) {
+      // A title picked from the bar's own list.
+      const li = [...document.querySelectorAll("#queue > li")].find((row) => $()?.(row).data("uid") === msg.uid);
+      if (li) pickItem(li);
+    }
   });
 
   tell();

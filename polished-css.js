@@ -5,9 +5,8 @@
 // that wrap in their own column beside the time and name; the buttons under
 // the video become one flat bar; the playing item is marked in the
 // playlist; poll results show as bars (content.js sets each option's
-// --cp-share). And, with nothing to see, the chat, user list, private
-// messages, playlist and search results become lighter for the browser to
-// draw.
+// --cp-share). And, with nothing to see, the chat, private messages,
+// playlist and search results become lighter for the browser to draw.
 //
 // It never outranks a channel's own CSS. content.js puts it straight after
 // CyTube's theme stylesheet, and the channel's CSS comes after it, so on
@@ -321,12 +320,13 @@ globalThis.CP_POLISHED_CSS = String.raw`
 }
 
 /* ---- lighter to draw ----
-   These change nothing you can see. The chat, user list and private
-   messages are drawn on their own, so a new message or someone coming and
-   going doesn't make the browser rework the rest of the page (they scroll,
-   so nothing in them showed outside them anyway). A long playlist or list
-   of search results only draws the rows in view. */
-:where(#messagebuffer, #userlist, #pmbar .pm-buffer) {
+   These change nothing you can see. The chat and private messages are
+   drawn on their own, so a new message doesn't make the browser rework the
+   rest of the page (they scroll, so nothing in them showed outside them
+   anyway). A long playlist or list of search results only draws the rows
+   in view. (Not the user list: its name menu and profile box have to show
+   outside it.) */
+:where(#messagebuffer, #pmbar .pm-buffer) {
   contain: layout paint;
 }
 :where(#queue > li, #library > li) {

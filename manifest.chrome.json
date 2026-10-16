@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CyTube Plus",
-  "version": "0.8.2",
+  "version": "0.8.2.1",
   "description": "A tidier look, coloured names, mention highlights, lights down and Niconico-style comments for cytu.be. Unofficial.",
   "homepage_url": "https://github.com/Hostu404/cytube-plus",
   "minimum_chrome_version": "120",

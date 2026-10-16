@@ -127,3 +127,49 @@
 .cytube-plus-highlight .pm-buffer > div strong.username {
   color: #d2a76b;
 }
+
+/* ---- Turn off sync -----------------------------------------------------------
+   With sync off (sync-page.js sets .cytube-plus-unsynced), a bar under the
+   video says so and has the way back, and a title clicked in the playlist
+   or in search results plays just for you. That pick is marked; CyTube's
+   own mark stays on what the room is playing. */
+#cytube-plus-sync-bar {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 !important;
+  padding: 6px 10px !important;
+  border-radius: 8px;
+  border-left: 3px solid #7fb2e5;
+  background-color: rgba(127, 178, 229, 0.12);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+#cytube-plus-sync-bar .cp-sync-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#cytube-plus-sync-bar .cp-sync-back {
+  flex: none;
+}
+
+.cytube-plus-unsynced :is(#queue, #library) > li.cp-picked {
+  background-color: rgba(127, 178, 229, 0.16);
+  background-image: linear-gradient(#7fb2e5, #7fb2e5);
+  background-size: 3px 100%;
+  background-repeat: no-repeat;
+}
+
+.cytube-plus-unsynced :is(#queue, #library) > li.cp-picked .qe_title::before {
+  content: "\25B6\00A0";
+  color: #7fb2e5;
+}
+
+/* Out of sync, the room's own video in the playlist says so, next to the
+   pick you're watching. */
+.cytube-plus-unsynced #queue > li.queue_active .qe_time::before {
+  content: "Room \00B7\00A0";
+  opacity: 0.7;
+}

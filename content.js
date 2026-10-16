@@ -17,23 +17,29 @@
 //    CyTube.
 //  - Shrink big emotes: inside a message, and less when a message is only
 //    emotes; none ever gets bigger.
+//  - Turn off sync (in the popup, off to start with): pause and skip the
+//    video on your own, or click a title in the playlist or search results
+//    to watch it; a bar under the video puts you back in sync (sync-page.js
+//    does the syncing part, in the page).
 //
 // It does nothing at all on blacklisted channels (the blacklist is edited
 // in the toolbar popup, and starts out with the Kinoplex).
 //
 // Otherwise it stays out of the channel's way: it changes none of CyTube's
-// own code, its look never outranks the channel's CSS (see
-// polished-css.js), its buttons sit in a group of their own, and anything
-// the channel's own scripts already do with a name or a click comes first.
+// own code (except, only while you're out of sync, the two handlers for the
+// room's video: see sync-page.js), its look never outranks the channel's
+// CSS (see polished-css.js), its buttons sit in a group of their own, and
+// anything the channel's own scripts already do with a name or a click
+// comes first.
 (() => {
   "use strict";
 
   const api = globalThis.browser ?? globalThis.chrome;
 
-  const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, highlights: true, clickToInsert: true,
-    emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
-  const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, highlights: false, clickToInsert: false,
-    emoteSizes: false };
+  const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
+    clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
+  const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, syncOff: false, highlights: false,
+    clickToInsert: false, emoteSizes: false };
   // The blacklist: channels it stays off on, until someone takes them off.
   const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 
@@ -91,6 +97,7 @@
     document.documentElement.classList.toggle("cytube-plus-click", settings.clickToInsert);
     document.documentElement.classList.toggle("cytube-plus-highlight", settings.highlights);
     updateButtons();
+    toPage({ action: "syncOff", on: settings.syncOff });
     if (settings.nico && !wasNico) nicoTurnedOn();
     if (!settings.nico) clearNico();
     if (!settings.lightsButton && lightsOn) setLights(false);
@@ -1499,6 +1506,98 @@
       lightsBtn.title = lightsOn ? "Lights up" : "Lights down";
       lightsBtn.style.display = settings.lightsButton ? "" : "none";
     }
+  }
+
+  // ---- turn off sync ---------------------------------------------------------
+
+  // sync-page.js, in the page, does the syncing; this keeps the bar under
+  // the video up to date with what it says.
+  let syncState = { synced: true, ended: false, pickTitle: "", roomTitle: "" };
+  let syncBar = null;
+  let syncNotice = "";
+  let noticeTimer = 0;
+
+  const NOTICES = {
+    leader: "You're the leader: the room follows your video, so you stay in sync.",
+    unplayable: "That one can't play just for you from here. Add it to the playlist, then click it there.",
+  };
+
+  function toPage(message) {
+    document.dispatchEvent(new CustomEvent("cytube-plus:sync", { detail: JSON.stringify(message) }));
+  }
+
+  document.addEventListener("cytube-plus:sync-state", (e) => {
+    let state;
+    try { state = JSON.parse(e.detail); } catch (err) { return; }
+    if (!state || typeof state !== "object") return;
+    syncState = { ...syncState, ...state };
+    if (NOTICES[state.refused]) {
+      syncNotice = NOTICES[state.refused];
+      clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => {
+        syncNotice = "";
+        updateSyncBar();
+      }, 5000);
+    } else if (state.synced === false) {
+      clearTimeout(noticeTimer);
+      syncNotice = "";
+    }
+    updateSyncBar();
+  });
+
+  // Out of sync, a bar under the video says what's playing and has the way
+  // back; in sync, it's only there for a moment to explain a click that
+  // didn't play.
+  function updateSyncBar() {
+    if (syncState.synced && !syncNotice) {
+      syncBar?.remove();
+      syncBar = null;
+      return;
+    }
+    if (!syncBar) {
+      syncBar = document.createElement("div");
+      syncBar.id = "cytube-plus-sync-bar";
+      syncBar.setAttribute("role", "status");
+      const text = document.createElement("span");
+      text.className = "cp-sync-text";
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "btn btn-xs btn-default cp-sync-back";
+      back.textContent = "Back in sync";
+      // Back in sync turns the setting off again, here and in the popup.
+      back.addEventListener("click", () => {
+        settings.syncOff = false;
+        saveSettings();
+        applySettings(settings.nico);
+      });
+      syncBar.append(text, back);
+    }
+    const wrap = document.getElementById("videowrap");
+    const video = wrap?.querySelector(":scope > .embed-responsive");
+    if (video && syncBar.previousElementSibling !== video) video.after(syncBar);
+    else if (!video && wrap && !syncBar.isConnected) wrap.appendChild(syncBar);
+    const text = syncBar.querySelector(".cp-sync-text");
+    syncBar.querySelector(".cp-sync-back").style.display = syncState.synced ? "none" : "";
+    const parts = [];
+    if (syncNotice) {
+      parts.push(syncNotice);
+    } else if (syncState.ended) {
+      parts.push(bold("That was the last one."));
+    } else if (syncState.pickTitle) {
+      parts.push(bold("Watching on your own: "), syncState.pickTitle + ".");
+    } else {
+      parts.push(bold("Sync is off."), " Pause and skip as you like, or click a title in the playlist to watch it.");
+    }
+    if (!syncState.synced && (syncState.pickTitle || syncState.ended) && syncState.roomTitle) {
+      parts.push(" The room is on " + syncState.roomTitle + ".");
+    }
+    text.replaceChildren(...parts);
+  }
+
+  function bold(t) {
+    const b = document.createElement("strong");
+    b.textContent = t;
+    return b;
   }
 
   // ---- start ----------------------------------------------------------------

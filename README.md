@@ -1,6 +1,9 @@
 # CyTube Plus
 
-A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, and click a name to reply or an emote to post it. Unofficial.
+A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, click a name to reply or an emote to post it, and a switch to turn off sync and watch on your own. Unofficial.
+
+**Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (Firefox and Firefox for Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
+
 ## Screenshots
 <img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
 
@@ -14,6 +17,9 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   A long chat message wraps in its own column beside the time and name,
   so its second line starts under its first word, not under the time
   (on a chat wide enough for it). The rest of the page is left alone.
+  It also makes the chat, user list, private messages and long playlists
+  less work for the browser to draw, which you can't see but helps busy
+  channels run smoothly.
 - **Coloured names**: each name in chat gets its own colour.
 - **Highlights**: messages that mention you, and private messages, stand
   out. CyTube's own PM windows work as usual.
@@ -38,6 +44,16 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   reads more easily: at most 36px tall inside a message, and 84px when a
   message is only emotes. Emotes smaller than that stay as CyTube (or the
   channel) shows them: none ever gets bigger.
+- **Turn off sync** (in the toolbar popup, off to start with): the video
+  is yours to pause and skip around as you like. Click a title in the
+  playlist, or in search results, and it plays just for you, from the
+  start; when it ends, the next one down plays, until the end of that
+  list. The room carries on without you, and a bar under the video says
+  what you're watching and what the room's on. **Back in sync** on the bar
+  takes you straight back to the room's video, where the room is, and
+  turns the setting off again. Ctrl+click or a middle click still opens a
+  title's link in a new tab. The playlist leader stays in sync, as the
+  room follows their video.
 - **Blacklist**: the add-on does nothing at all on blacklisted channels.
   The Kinoplex is blacklisted to start with. Channels can be added or
   removed in the toolbar popup, which also has a switch for the channel
@@ -54,15 +70,18 @@ What's changed in each version is on the
   go over the channel's on purpose, and emote sizes can make a channel's
   big emotes smaller, never bigger; both can be switched off.)
 - None of CyTube's code is changed, and the add-on's buttons sit in a group
-  of their own, so a channel's scripts find the page as they expect.
+  of their own, so a channel's scripts find the page as they expect. The
+  one exception is while sync is off: the two handlers
+  that move the video along with the room are wrapped, and they're put
+  back as soon as you're in sync again.
 - If a channel's script already does something when a name is clicked, or
   colours a name itself, the add-on leaves that alone.
 
 ## Installing on Firefox
 
-**From Firefox Add-ons** (recommended: it updates itself) (Currently awaiting Mozillas approval)
+**From Firefox Add-ons** (recommended: it updates itself)
 
-Open https://addons.mozilla.org/firefox/addon/cytube-plus/ in Firefox and
+Open the [CyTube Plus page on Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) in Firefox and
 click **Add to Firefox**. On Android, open the same page in Firefox for
 Android and tap **Add to Firefox**.
 
@@ -75,8 +94,8 @@ Android and tap **Add to Firefox**.
    onto a Firefox window.)
 3. Click **Add** when Firefox asks.
 
-Installed this way it doesn't update itself: install a newer release the
-same way to update.
+To get updates automatically, install it from
+[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) instead.
 
 Needs Firefox 140 or newer (desktop) or 142 (Android).
 

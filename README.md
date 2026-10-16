@@ -5,7 +5,8 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 **Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (Firefox and Firefox for Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
 
 ## Screenshots
-<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/bd15c16f-b0cb-4929-8381-2b5e8406d415" />
+
 
 
 

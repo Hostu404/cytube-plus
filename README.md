@@ -66,6 +66,9 @@ All the settings are in the toolbar button's popup.
 What's changed in each version is on the
 [Releases page](https://github.com/Hostu404/cytube-plus/releases).
 
+## Why is CyTube Plus?
+https://youtube.com/watch?v=9QhUFeJgWtg
+
 ## Staying out of the channel's way
 
 - A channel's own CSS always wins over the Polished look. (Coloured names

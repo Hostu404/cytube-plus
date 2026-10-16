@@ -1,7 +1,8 @@
 // The toolbar popup: the settings, and the blacklist of channels the add-on is off on.
 const api = globalThis.browser ?? globalThis.chrome;
 const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
-  clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
+  clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoSpeed: 100, dim: 90, peekSeconds: 4,
+  chatDim: 40 };
 // How the sliders' values read.
 const SHOW = {
   nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
@@ -36,6 +37,7 @@ function showSettings(settings) {
     else showSlider(input, s[key]);
   }
   document.getElementById("nico-sliders").classList.toggle("off", !s.nico);
+  document.getElementById("nico-emotes-row").classList.toggle("off", !s.nico);
   document.getElementById("lights-sliders").classList.toggle("off", !s.lightsButton);
   document.getElementById("chat-dim-row").classList.toggle("off", !s.lightsButton);
   document.getElementById("chat-dim-sliders").classList.toggle("off", !s.lightsButton || !s.chatDimSeparate);

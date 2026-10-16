@@ -6,8 +6,8 @@
 //  - Coloured names: each name in chat gets its own colour, over any
 //    colour the channel's CSS gives names; staff get the colour the user
 //    list shows them in.
-//  - Niconico comments: new chat messages fly across the video in lanes,
-//    with limits for when chat floods.
+//  - Niconico comments: new chat messages (or only their emotes) fly
+//    across the video in lanes, with limits for when chat floods.
 //  - Lights down: dims everything around the video; a click outside it
 //    lifts the dark a little for a few seconds. The chat can have a lighter
 //    dark of its own, which stays as it is: then only a click outside both
@@ -38,7 +38,8 @@
   const api = globalThis.browser ?? globalThis.chrome;
 
   const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
-    clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoSpeed: 100, dim: 90, peekSeconds: 4, chatDim: 40 };
+    clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoSpeed: 100, dim: 90, peekSeconds: 4,
+    chatDim: 40 };
   const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, syncOff: false, highlights: false,
     clickToInsert: false, emoteSizes: false };
   // The blacklist: channels it stays off on, until someone takes them off.
@@ -600,6 +601,9 @@
     }
     for (const img of clone.querySelectorAll("img")) {
       if (!img.classList.contains("channel-emote")) img.remove();
+      // Not the chat's own sizing of the emote (nor the small size it's
+      // held at while it loads): comments size their emotes themselves.
+      else img.removeAttribute("style");
     }
     // Addresses the channel doesn't turn into links are plain text.
     const walker = clone.ownerDocument.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
@@ -607,6 +611,14 @@
       t.nodeValue = t.nodeValue.replace(/\b(?:https?:\/\/|www\.)\S+/gi, "");
     }
     const emotes = pairs.filter(([, img]) => clone.contains(img));
+    // Emotes only (an option in the popup): just the message's emotes fly,
+    // a little apart and at the size of an all-emote message, and a message
+    // without one doesn't fly at all.
+    if (settings.nicoEmotesOnly) {
+      if (!emotes.length) return null;
+      const space = () => clone.ownerDocument.createTextNode(" ");
+      clone.replaceChildren(...emotes.flatMap(([, img], i) => (i ? [space(), img] : [img])));
+    }
     const hasText = clone.textContent.trim() !== "";
     if (!hasText && !emotes.length) return null;
     return { div, content: clone, ready: emotesReady(emotes, clone) };
@@ -782,6 +794,9 @@
     el.style.textShadow = `0 0 ${NICO_GLOW * scale}px #000`;
     const h = (solo ? NICO_SOLO_EMOTE_HEIGHT : NICO_EMOTE_HEIGHT) * scale;
     for (const img of el.querySelectorAll("img")) {
+      // A channel's limit on emotes in chat doesn't hold them down here.
+      img.style.setProperty("max-height", "none", "important");
+      img.style.setProperty("max-width", "none", "important");
       img.style.setProperty("height", h + "px", "important");
       const ratio = Number(img.dataset.cpRatio);
       if (ratio > 0) img.style.setProperty("width", h * ratio + "px", "important");

@@ -246,13 +246,13 @@
 }
 
 #cytube-plus-sync-list .cp-sync-item.cp-picked {
-  background-color: rgba(127, 178, 229, 0.16);
-  box-shadow: inset 3px 0 0 #7fb2e5;
+  background-color: rgba(229, 178, 90, 0.16);
+  box-shadow: inset 3px 0 0 #e5b25a;
 }
 
 #cytube-plus-sync-list .cp-sync-item.cp-picked .cp-sync-item-title::before {
   content: "\25B6\00A0";
-  color: #7fb2e5;
+  color: #e5b25a;
 }
 
 #cytube-plus-sync-list .cp-sync-item-title {
@@ -278,4 +278,24 @@
 .cytube-plus-unsynced #queue > li.queue_active .qe_time::before {
   content: "Room \00B7\00A0";
   opacity: 0.7;
+}
+
+/* Your pick, marked where you picked it (the playlist or search results),
+   moving down with it as one pick follows the next. Amber, against the
+   room's blue, so the two never read alike; strong enough to show through
+   a channel's own playlist styling, since nothing else uses this class. */
+.cytube-plus-unsynced #queue > li.cp-picked,
+.cytube-plus-unsynced #library > li.cp-picked {
+  background-color: rgba(229, 178, 90, 0.16) !important;
+  box-shadow: inset 4px 0 0 #e5b25a !important;
+}
+
+.cytube-plus-unsynced #queue > li.cp-picked .qe_time::before,
+.cytube-plus-unsynced #library > li.cp-picked .qe_time::before {
+  content: "\25B6\00A0You \00B7\00A0";
+  color: #e5b25a;
+}
+
+.cytube-plus-unsynced #queue > li.cp-picked.queue_active .qe_time::before {
+  content: "\25B6\00A0You \00B7 Room \00B7\00A0";
 }

@@ -295,9 +295,15 @@
     const items = [...document.querySelectorAll(`#${pick.list} > li`)];
     const at = items.findIndex(isPick);
     if (at >= 0) {
+      // If the pick was in sight in its list as it finished, the list
+      // follows the mark down to the next one. If you'd scrolled away,
+      // it's left where you put it.
+      const box = scrollerOf(items[at]);
+      const follow = !!box && inView(items[at], box);
       for (const next of items.slice(at + 1)) {
         if (playable(next)) {
           pickItem(next);
+          if (follow) bringIntoView(next, box);
           return;
         }
       }
@@ -331,6 +337,29 @@
       }
       lastTime = t;
     });
+  }
+
+  // The box a list scrolls in (CyTube's playlist has its own scrollbar),
+  // or null when it's the page that scrolls: the page is never moved.
+  function scrollerOf(el) {
+    for (let box = el.parentElement; box && box !== document.body && box !== document.documentElement; box = box.parentElement) {
+      const y = getComputedStyle(box).overflowY;
+      if ((y === "auto" || y === "scroll") && box.scrollHeight > box.clientHeight + 1) return box;
+    }
+    return null;
+  }
+
+  function inView(el, box) {
+    const a = el.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    return a.bottom > b.top + 2 && a.top < b.bottom - 2;
+  }
+
+  function bringIntoView(el, box) {
+    const a = el.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (a.top >= b.top && a.bottom <= b.bottom) return;
+    box.scrollBy({ top: a.top - b.top - (b.height - a.height) / 2, behavior: "smooth" });
   }
 
   function markPick() {

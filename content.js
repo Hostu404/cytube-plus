@@ -1167,13 +1167,100 @@
     return mark ? mark.slice("chat-msg-".length) : "";
   }
 
+  // ---- emote effects --------------------------------------------------------
+  //
+  // A channel's CSS can turn an emote into an effect for the emote after it:
+  // "/reverse" hidden, and the next emote flipped; or an overlay that sets
+  // the next two on top of each other ("/overlay pepe hat"). A click on an
+  // emote drawn with one adds the whole thing as it was typed, so it comes
+  // out the same in your message. Worked out from the channel's own CSS by
+  // the same rules the CyTube app uses: an effect emote is one the CSS
+  // hides, or one with a rule for the emote right after it; it stacks the
+  // next two when that rule pulls the following one back over it (a
+  // negative right margin).
+  const FX_TITLE = String.raw`(?:img)?(?:\.channel-emote)?\[title="([^"]+)"\]`;
+  const FX_EMOTE = String.raw`(?:img)?\.channel-emote`;
+  const FX_SELF = new RegExp(String.raw`^(?:.+ )?${FX_TITLE}$`);
+  const FX_NEXT = new RegExp(String.raw`^(?:.+ )?${FX_TITLE}\+${FX_EMOTE}$`);
+  let fxCache = { css: null, effects: new Map() };
+
+  function emoteEffects() {
+    const style = document.getElementById("chancss");
+    const css = style?.textContent || "";
+    if (css === fxCache.css) return fxCache.effects;
+    const hidden = new Set();
+    const next = new Map();          // effect -> the rules for the emote after it
+    const walk = (rules) => {
+      for (const rule of rules) {
+        if (!rule.selectorText) {
+          if (rule.cssRules) walk(rule.cssRules);      // @media, @supports
+          continue;
+        }
+        for (const part of rule.selectorText.split(/,(?![^()[\]]*[)\]])/)) {
+          const selector = part.trim().replace(/'/g, '"').replace(/\s*([+>~])\s*/g, "$1").replace(/\s+/g, " ");
+          let m = selector.match(FX_NEXT);
+          if (m) {
+            if (!next.has(m[1])) next.set(m[1], []);
+            next.get(m[1]).push(rule.style);
+          } else if ((m = selector.match(FX_SELF)) && rule.style.getPropertyValue("display").trim() === "none") {
+            hidden.add(m[1]);
+          }
+        }
+      }
+    };
+    try {
+      walk(style?.sheet?.cssRules || []);
+    } catch (e) {
+      // Unreadable: emotes are added one at a time, as before.
+    }
+    const effects = new Map();
+    for (const name of new Set([...hidden, ...next.keys()])) {
+      const after = next.get(name) || [];
+      const value = (prop) => after.map((s) => s.getPropertyValue(prop).trim()).filter(Boolean).pop() || "";
+      // Moved out of the line altogether (a backdrop behind the chat): it
+      // doesn't sit on the emote after it.
+      const placed = ["absolute", "fixed"].includes(value("position")) || !!(value("z-index") || value("top") || value("bottom"));
+      effects.set(name, { stacks: !placed && parseFloat(value("margin-right")) < 0 });
+    }
+    fxCache = { css, effects };
+    return effects;
+  }
+
+  // The emote clicked, with any effect it's drawn with: the effect emotes
+  // just before it (or after, if an effect emote was clicked) and, for one
+  // that stacks, the other emote of the pair. Read the way the CSS reads
+  // the message: element by element, ignoring the text between.
+  function withEffects(emote) {
+    const effects = emoteEffects();
+    const parent = emote.parentElement;
+    if (!parent || !effects.size) return [emote];
+    const code = (el) => el.title || el.alt || "";
+    const isEmote = (el) => el.matches("img.channel-emote") && !!code(el);
+    const isEffect = (el) => isEmote(el) && effects.has(code(el));
+    const kids = [...parent.children];
+    for (let i = 0; i < kids.length;) {
+      if (!isEffect(kids[i])) {
+        if (kids[i] === emote) return [emote];
+        i++;
+        continue;
+      }
+      const group = [];
+      while (i < kids.length && isEffect(kids[i])) group.push(kids[i++]);
+      const takes = effects.get(code(group[group.length - 1])).stacks ? 2 : 1;
+      for (let n = 0; n < takes && i < kids.length && isEmote(kids[i]) && !isEffect(kids[i]); n++) group.push(kids[i++]);
+      if (group.includes(emote)) return group;
+    }
+    return [emote];
+  }
+
   // What was clicked: a name (CyTube's, or a channel's own way of showing
   // the sender's name) or an emote. Null for anything else.
   function clickedOn(target) {
     if (!(target instanceof Element) || !target.closest("#messagebuffer") || target.closest("a")) return null;
     const emote = target.closest("img.channel-emote, img[class*='emote'], video[class*='emote']");
     if (emote) {
-      const code = emote.title || emote.alt || "";
+      const parts = emote.matches("img.channel-emote") ? withEffects(emote) : [emote];
+      const code = parts.map((el) => el.title || el.alt || "").filter(Boolean).join(" ");
       return code ? { fragment: code } : null;
     }
     const div = target.closest("#messagebuffer > div");

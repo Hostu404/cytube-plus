@@ -5,7 +5,7 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 **Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (Firefox and Firefox for Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
 
 ## Screenshots
-<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/bd15c16f-b0cb-4929-8381-2b5e8406d415" />
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
 
 
 
@@ -34,12 +34,15 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 - **Niconico comments**: the square button under the video makes new chat
   messages fly across it, emotes included, and coloured text like
   greentext keeps its colour. They show in fullscreen too, and their speed
-  can be changed in the toolbar popup (half to double). Nothing is saved
+  can be changed in the toolbar popup (half to double). With **Emotes
+  only** on, just the emotes fly, and messages without one stay in chat. Nothing is saved
   up while the tab is hidden: only what's said while you're watching
   flies.
 - **Click names and emotes**: click a name in chat to reply to that person,
-  or an emote to add it to your message. Nothing is sent until you press
-  Enter.
+  or an emote to add it to your message. An emote shown with one of the
+  channel's effects (a flip, a spin, one emote laid over another) comes
+  with the effect, as it was typed, so yours looks the same. Nothing is
+  sent until you press Enter.
 - **Shrink big emotes**: big emotes in chat are made smaller so the chat
   reads more easily: at most 36px tall inside a message, and 84px when a
   message is only emotes. Emotes smaller than that stay as CyTube (or the
@@ -48,8 +51,11 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   is yours to pause and skip around as you like. Click a title in the
   playlist, or in search results, and it plays just for you, from the
   start; when it ends, the next one down plays, until the end of that
-  list. The room carries on without you, and a bar under the video says
-  what you're watching and what the room's on. If the channel hides its
+  list. What you're watching is marked in amber in the list (the room's
+  video keeps its own mark), and the mark moves down as each one ends,
+  with the list scrolling along if you were watching it. The room carries
+  on without you, and a bar under the video says what you're watching and
+  what the room's on. If the channel hides its
   playlist, a **Playlist** button on the bar opens a searchable list of it
   to pick from instead. **Back in sync** on the bar
   takes you straight back to the room's video, where the room is, and
@@ -65,9 +71,6 @@ All the settings are in the toolbar button's popup.
 
 What's changed in each version is on the
 [Releases page](https://github.com/Hostu404/cytube-plus/releases).
-
-## Why is CyTube Plus?
-https://youtube.com/watch?v=9QhUFeJgWtg
 
 ## Staying out of the channel's way
 

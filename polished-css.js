@@ -320,17 +320,14 @@ globalThis.CP_POLISHED_CSS = String.raw`
 }
 
 /* ---- lighter to draw ----
-   These change nothing you can see. The chat and private messages are
+   This changes nothing you can see. The chat and private messages are
    drawn on their own, so a new message doesn't make the browser rework the
    rest of the page (they scroll, so nothing in them showed outside them
-   anyway). A long playlist or list of search results only draws the rows
-   in view. (Not the user list: its name menu and profile box have to show
-   outside it.) */
+   anyway). (Not the user list: its name menu and profile box have to show
+   outside it. Not the playlist's rows either: drawn only when in view,
+   each one's height was a guess until then, and the list jumped as the
+   guesses were corrected.) */
 :where(#messagebuffer, #pmbar .pm-buffer) {
   contain: layout paint;
-}
-:where(#queue > li, #library > li) {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 32px;
 }
 `;

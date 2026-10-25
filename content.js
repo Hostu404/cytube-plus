@@ -527,6 +527,8 @@
     layerObserver?.disconnect();
     layerObserver = new ResizeObserver(relayout);
     layerObserver.observe(nicoLayer);
+    // Made while the lights are down: above the dark at once.
+    if (lightsOn) placeScrim();
     if (!fontsWatched && document.fonts) {
       fontsWatched = true;
       document.fonts.addEventListener("loadingdone", relayout);
@@ -543,7 +545,7 @@
     for (const c of active) {
       const progress = (c.animation.currentTime || 0) / c.duration;
       sizeComment(c.el, c.solo, g.scale);
-      c.el.style.top = c.lane * g.laneHeight + "px";
+      c.el.style.top = laneTop(c.el, c.lane, g) + "px";
       c.width = commentWidth(c.el, g.scale);
       c.animation.cancel();
       startFlight(c, g.width);
@@ -785,6 +787,17 @@
   // How far a comment has to go to be fully off the video: its exact width,
   // plus room for the glow round the text, so it's gone, glow and all,
   // before it's taken away.
+  // Where a comment in [lane] goes: its lane. One taller than its lane (a
+  // message that's only emotes) in the bottom lanes hangs below the video
+  // (content.css lets it), except in fullscreen, where there's nothing below
+  // and it would be cut off: there it sits on the video's bottom edge.
+  function laneTop(el, lane, g) {
+    const top = lane * g.laneHeight;
+    if (!document.fullscreenElement?.contains(el)) return top;
+    const height = el.getBoundingClientRect().height;
+    return Math.max(0, Math.min(top, g.height - height));
+  }
+
   function commentWidth(el, scale) {
     return Math.ceil(el.getBoundingClientRect().width) + Math.ceil(NICO_GLOW * scale * 2);
   }
@@ -863,7 +876,7 @@
         laneOccupants.get(lane).push(occupant);
 
         const c = { el: item.el, solo: item.solo, lane, width: item.width, duration, occupant };
-        c.el.style.top = lane * g.laneHeight + "px";
+        c.el.style.top = laneTop(c.el, lane, g) + "px";
         c.el.style.visibility = "";
         startFlight(c, g.width);
         c.animation.startTime = now;
@@ -1355,12 +1368,14 @@
     if (!r || r.width === 0 || document.fullscreenElement) {
       scrim.style.display = "none";
       chatScrim.style.display = "none";
+      liftNico(null);
       return;
     }
     scrim.style.display = "";
     // Scrolled down, the video slides up under CyTube's top bar, which stays
     // put: the clear part stops at the bar, so the bar stays dimmed too.
     const top = Math.max(r.top, topBarBottom());
+    liftNico(top - r.top);
     scrim.style.left = r.left + "px";
     scrim.style.top = top + "px";
     scrim.style.width = r.width + "px";
@@ -1372,6 +1387,26 @@
       ? `0 0 ${cs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}`
       : cs.borderRadius;
     placeChatHole(r.left, top, r);
+  }
+
+  // While the lights are down, the Niconico comments go above the dark (the
+  // scrim's 1035; Bootstrap's dialogs, at 1040 and up, stay above them), so
+  // one hanging below the video isn't dimmed with the page. Cut off where
+  // CyTube's top bar covers the video ([cut] px of it, scrolled down), or
+  // they'd show over the bar. Null puts them back among the page's own.
+  function liftNico(cut) {
+    if (!nicoLayer) return;
+    if (cut === null) {
+      nicoLayer.style.removeProperty("z-index");
+      nicoLayer.style.removeProperty("clip-path");
+      return;
+    }
+    nicoLayer.style.setProperty("z-index", "1036", "important");
+    if (cut > 0) {
+      nicoLayer.style.setProperty("clip-path", `polygon(0 ${cut}px, 100% ${cut}px, 100% 300%, 0 300%)`, "important");
+    } else {
+      nicoLayer.style.removeProperty("clip-path");
+    }
   }
 
   // Dimming the chat on its own: the chat is cut out of the dark around the
@@ -1472,6 +1507,7 @@
       setDarkness(restingLevel(), 350, "ease-in-out");
     } else {
       clearInterval(followTimer);
+      liftNico(null);
       if (scrim) {
         setDarkness(0, 220, "ease-out");
         const fading = scrim;

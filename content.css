@@ -24,16 +24,31 @@
   background-color: rgba(0, 0, 0, 0);
 }
 
-/* Niconico comments: inside the video box, so they're clipped to the video,
-   never dimmed, and show in CyTube's fullscreen too. */
+/* Niconico comments: inside the video box, so they're clipped to the video's
+   sides and show in CyTube's fullscreen too. One taller than its lane (a
+   message that's only emotes) in the bottom lanes hangs below the video
+   rather than being cut off (see laneTop in content.js). Never dimmed: with
+   the lights down they're lifted above the dark (see liftNico). */
 .cp-nico {
   position: absolute !important;
   inset: 0 !important;
-  overflow: hidden !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
   pointer-events: none !important;
   z-index: 5 !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+/* The video box lets them hang below it while they're on; it still clips
+   at its sides. Not in fullscreen, which has nothing below. The player in
+   it keeps the box's rounded corners, which the box no longer clips to. */
+#videowrap .embed-responsive:has(> .cp-nico):not(:fullscreen) {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+#videowrap .embed-responsive:has(> .cp-nico):not(:fullscreen) > :not(.cp-nico) {
+  border-radius: inherit;
 }
 
 /* Size, glow and emote sizes are set per comment by content.js, scaled to

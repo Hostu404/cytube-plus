@@ -448,11 +448,15 @@
   //
   // Every comment crosses in the same 3.755 s (so a long one moves faster),
   // unless that would pass the speed limit, which stretches a very long one
-  // out to as much as 11.265 s. Lanes are 34 high, at most 12, picked so
-  // comments spread out (an empty lane round-robin, else the lane whose last
-  // comment is furthest along, never one where the new comment would run
-  // into it); 75 ms between comments setting off; 24 between comments in a
-  // lane; text 20 bold, emotes 28 (56 when a message is only emotes).
+  // out to as much as 11.265 s. Lanes are 34 high, at most 12, and each
+  // comment takes one at random (an empty lane if there is one, else any
+  // lane where it won't run into the comment ahead of it, and not the lane
+  // the last comment took while there's another); 75 ms between comments
+  // setting off; 24 between comments in a lane; text 20 bold, emotes 28 (56
+  // when a message is only emotes). Comments fly in the order they were
+  // said, except that one which has to wait for room (a long one is fast,
+  // and mustn't catch up with the comment ahead of it) lets the ones behind
+  // it that fit go first.
   //
   // Those sizes are for a small video, which 12 lanes of 34 fill. A bigger
   // video makes every size (and the speed limit) grow with it, by the same
@@ -493,8 +497,8 @@
   let layerObserver = null;
   let fontsWatched = false;
   let laneOccupants = new Map();   // lane -> [{ spawnAt, speed, width, clearAt }]
-  let nextLaneIndex = 0;
-  // Waiting to fly: { div, content, ready, settled, solo, empty, el, width, scale }
+  let lastLane = -1;               // the lane the last comment took
+  // Waiting to fly: { div, content, ready, settled, solo, empty, el, width, scale, duration, speed }
   const pending = [];
   // Flying: { el, solo, lane, width, duration, animation, occupant }
   const active = new Set();
@@ -738,50 +742,83 @@
     const entryWait = Math.max(0, Math.ceil((last.width + gap - travelled) / last.speed));
     let overtakeWait = 0;
     if (speed > last.speed) {
-      const limit = screenWidth + width - gap;
-      const allowedRemain = limit / speed;
+      // It gains on [last] until [last] is off the video, by which time its
+      // front must still be [gap] short of the video's left edge.
+      const allowedRemain = (screenWidth - gap) / speed;
       overtakeWait = Math.max(0, Math.ceil(last.clearAt - now - allowedRemain));
     }
     return Math.max(entryWait, overtakeWait);
   }
 
-  function findBestLane(now, width, speed, g) {
+  // How long until [lane] will take comment [c] (0: it would now).
+  function laneWait(lane, now, c, g) {
+    const list = laneOccupants.get(lane);
+    return list ? laneWaitMs(list[list.length - 1], now, c.width, c.speed, g.gap, g.width) : 0;
+  }
+
+  // A lane for comment [c], picked at random so comments turn up all over
+  // the video rather than working down it in order: an empty lane if there's
+  // one, else any lane it can enter now without running into the comment
+  // ahead of it, never [avoid]; or null if there's none. Not the lane the
+  // last comment took, while there's another to pick, so one comment doesn't
+  // follow another at the same height.
+  function findBestLane(now, c, g, avoid = -1) {
+    const emptyLanes = [];
+    const safeLanes = [];
+    for (let lane = 0; lane < g.laneCount; lane++) {
+      if (lane === avoid) continue;
+      if (!laneOccupants.has(lane)) emptyLanes.push(lane);
+      else if (laneWait(lane, now, c, g) === 0) safeLanes.push(lane);
+    }
+    const lanes = emptyLanes.length ? emptyLanes : safeLanes;
+    if (!lanes.length) return null;
+    const others = lanes.filter((lane) => lane !== lastLane);
+    const choices = others.length ? others : lanes;
+    lastLane = choices[Math.floor(Math.random() * choices.length)];
+    return lastLane;
+  }
+
+  // The lane that will take comment [c] soonest (never [avoid]), and how
+  // long until it will.
+  function soonestLane(now, c, g, avoid = -1) {
+    let best = { lane: -1, wait: Infinity };
+    for (let lane = 0; lane < g.laneCount; lane++) {
+      if (lane === avoid) continue;
+      const wait = laneWait(lane, now, c, g);
+      if (wait < best.wait) best = { lane, wait };
+    }
+    return best;
+  }
+
+  // Which comment flies next, and in which lane: the oldest one that's ready
+  // ([ready] is oldest first), if a lane will take it now. If none will yet
+  // (a long comment is fast, so it may have to wait until it won't catch up
+  // with the comment ahead), a later one that fits now goes first, so the
+  // whole queue isn't held up behind it; but never in the lane the oldest
+  // will get first, so the oldest isn't kept waiting any longer. If nothing
+  // can go, how long until something can, so the loop sleeps that long
+  // rather than checking every frame (a new message wakes it anyway).
+  function pickComment(now, ready, g) {
     for (const [lane, list] of laneOccupants) {
       const kept = list.filter((o) => now < o.clearAt);
       if (kept.length) laneOccupants.set(lane, kept);
       else laneOccupants.delete(lane);
     }
-    const emptyLanes = [];
-    const safeLanes = [];
-    for (let lane = 0; lane < g.laneCount; lane++) {
-      const list = laneOccupants.get(lane);
-      if (!list) { emptyLanes.push(lane); continue; }
-      const last = list[list.length - 1];
-      if (laneWaitMs(last, now, width, speed, g.gap, g.width) > 0) continue;
-      safeLanes.push([lane, (now - last.spawnAt) * last.speed]);
+    const [oldest, ...rest] = ready;
+    const lane = findBestLane(now, oldest, g);
+    if (lane !== null) return { item: oldest, lane };
+    const held = soonestLane(now, oldest, g);
+    let wait = held.wait;
+    // (Not when the oldest is about to go: the stagger after one going
+    // first would hold it up.)
+    if (held.wait > NICO_SPAWN_STAGGER_MS) {
+      for (const c of rest) {
+        const lane = findBestLane(now, c, g, held.lane);
+        if (lane !== null) return { item: c, lane };
+        wait = Math.min(wait, soonestLane(now, c, g, held.lane).wait);
+      }
     }
-    const n = g.laneCount;
-    let chosen = null;
-    if (emptyLanes.length) {
-      const order = (lane) => (lane - nextLaneIndex + n) % n;
-      chosen = emptyLanes.reduce((a, b) => (order(b) < order(a) ? b : a));
-    } else if (safeLanes.length) {
-      chosen = safeLanes.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-    }
-    if (chosen !== null) nextLaneIndex = (chosen + 1) % n;
-    return chosen;
-  }
-
-  // How long until some lane will take this comment, so the loop sleeps that
-  // long rather than checking every frame (a new message wakes it anyway).
-  function nextSafeWaitMs(now, width, speed, g) {
-    let min = Infinity;
-    for (let lane = 0; lane < g.laneCount; lane++) {
-      const list = laneOccupants.get(lane);
-      if (!list || !list.length) return 16;
-      min = Math.min(min, laneWaitMs(list[list.length - 1], now, width, speed, g.gap, g.width));
-    }
-    return Math.min(1000, Math.max(16, min));
+    return { item: null, wait: Math.min(1000, Math.max(16, wait)) };
   }
 
   // How far a comment has to go to be fully off the video: its exact width,
@@ -816,20 +853,24 @@
     }
   }
 
-  // The comment, built and measured before it's placed (again if the video
-  // changed size while it waited).
-  function prepare(item, layer, scale) {
-    if (item.el && item.scale === scale) return;
-    if (!item.el) {
-      item.el = document.createElement("div");
-      item.el.className = "cp-nico-comment";
-      item.el.style.visibility = "hidden";
-      item.el.appendChild(item.content);
+  // The comments, built and measured before they're placed (again if the
+  // video changed size, or the layer was made anew, while they waited). All
+  // are built before any is measured, so a burst of chat is laid out once
+  // rather than once each.
+  function prepare(items, layer, scale) {
+    const fresh = items.filter((item) => !item.el || item.scale !== scale || item.el.parentElement !== layer);
+    for (const item of fresh) {
+      if (!item.el) {
+        item.el = document.createElement("div");
+        item.el.className = "cp-nico-comment";
+        item.el.style.visibility = "hidden";
+        item.el.appendChild(item.content);
+      }
+      if (item.el.parentElement !== layer) layer.appendChild(item.el);
+      sizeComment(item.el, item.solo, scale);
+      item.scale = scale;
     }
-    if (item.el.parentElement !== layer) layer.appendChild(item.el);
-    sizeComment(item.el, item.solo, scale);
-    item.scale = scale;
-    item.width = commentWidth(item.el, scale);
+    for (const item of fresh) item.width = commentWidth(item.el, scale);
   }
 
   async function drain() {
@@ -842,35 +883,36 @@
         const g = geometry(layer);
         if (g.width < 50 || g.height < 50) break;
 
-        // The oldest comment that's ready flies next. One still waiting for
-        // an emote image doesn't hold up the ones behind it; it goes as soon
-        // as the image is in.
-        const index = pending.findIndex((i) => i.settled);
-        if (index === -1) {
-          await sleep(1000, true);
+        // Only comments that are ready can fly: one still waiting for an
+        // emote image doesn't hold up the ones behind it, and goes as soon
+        // as the image is in. One left with nothing to show is dropped.
+        for (let i = pending.length - 1; i >= 0; i--) {
+          if (pending[i].settled && pending[i].empty) pending.splice(i, 1);
+        }
+        const ready = pending.filter((i) => i.settled);
+        if (!ready.length) {
+          if (pending.length) await sleep(1000, true);
           continue;
         }
-        const item = pending[index];
-        if (item.empty) {
-          pending.splice(index, 1);
-          continue;
-        }
-        prepare(item, layer, g.scale);
-        const distance = g.width + item.width;
+        prepare(ready, layer, g.scale);
         const fast = nicoSpeed();
-        const duration = Math.min(NICO_MAX_DURATION_MS / fast, Math.max(NICO_BASELINE_DURATION_MS / fast,
-          Math.round(distance / (NICO_MAX_SPEED * g.scale * fast))));
-        const speed = distance / duration;
+        for (const item of ready) {
+          const distance = g.width + item.width;
+          item.duration = Math.min(NICO_MAX_DURATION_MS / fast, Math.max(NICO_BASELINE_DURATION_MS / fast,
+            Math.round(distance / (NICO_MAX_SPEED * g.scale * fast))));
+          item.speed = distance / item.duration;
+        }
 
         // The animations' own clock, so a comment is exactly where the lanes
         // think it is (it would otherwise start a frame late).
         const now = document.timeline.currentTime ?? performance.now();
-        const lane = findBestLane(now, item.width, speed, g);
-        if (lane === null) {
-          await sleep(nextSafeWaitMs(now, item.width, speed, g), true);
+        const { item, lane, wait } = pickComment(now, ready, g);
+        if (!item) {
+          await sleep(wait, true);
           continue;
         }
-        pending.splice(index, 1);
+        pending.splice(pending.indexOf(item), 1);
+        const { duration, speed } = item;
         const occupant = { spawnAt: now, speed, width: item.width, clearAt: now + duration };
         if (!laneOccupants.has(lane)) laneOccupants.set(lane, []);
         laneOccupants.get(lane).push(occupant);

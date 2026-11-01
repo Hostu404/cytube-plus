@@ -66,6 +66,15 @@
   line-height: 1.2;
   color: #fff;
   will-change: transform;
+  z-index: 1 !important;
+}
+
+/* Text is never hidden behind an emote. A message that's only emotes is
+   taller than its lane and reaches into the next one, so every comment with
+   text goes over those, whichever lane each is in and whichever came first.
+   (An emote in a message with text is small enough to stay in its lane.) */
+.cp-nico-comment.cp-nico-solo {
+  z-index: 0 !important;
 }
 
 .cp-nico-comment img {

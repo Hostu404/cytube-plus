@@ -863,6 +863,8 @@
       if (!item.el) {
         item.el = document.createElement("div");
         item.el.className = "cp-nico-comment";
+        // Only emotes: it goes under comments with text (see content.css).
+        if (item.solo) item.el.classList.add("cp-nico-solo");
         item.el.style.visibility = "hidden";
         item.el.appendChild(item.content);
       }

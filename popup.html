@@ -56,6 +56,10 @@
         <span class="slider-head"><span>Speed</span><output id="nicoSpeed-value"></output></span>
         <input type="range" id="nicoSpeed" min="50" max="200" step="25">
       </label>
+      <label class="slider" id="nico-opacity-slider">
+        <span class="slider-head"><span>Emote opacity</span><output id="nicoEmoteOpacity-value"></output></span>
+        <input type="range" id="nicoEmoteOpacity" min="10" max="100" step="5">
+      </label>
     </div>
     <label class="row" id="nico-emotes-row">
       <span class="text">
@@ -63,6 +67,13 @@
         <span class="hint">Only the emotes in the message fly.</span>
       </span>
       <input type="checkbox" role="switch" id="nicoEmotesOnly">
+    </label>
+    <label class="row" id="nico-text-row">
+      <span class="text">
+        <span class="title">Text only</span>
+        <span class="hint">Only the text in the message flies.</span>
+      </span>
+      <input type="checkbox" role="switch" id="nicoTextOnly">
     </label>
     <label class="row">
       <span class="text">

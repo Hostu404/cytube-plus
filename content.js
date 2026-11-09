@@ -38,7 +38,8 @@
   const api = globalThis.browser ?? globalThis.chrome;
 
   const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
-    clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoSpeed: 100, dim: 90, peekSeconds: 4,
+    clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoTextOnly: false, nicoSpeed: 100,
+    nicoEmoteOpacity: 100, dim: 90, peekSeconds: 4,
     chatDim: 40 };
   const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, syncOff: false, highlights: false,
     clickToInsert: false, emoteSizes: false };
@@ -100,6 +101,7 @@
     document.documentElement.classList.toggle("cytube-plus-highlight", settings.highlights);
     updateButtons();
     toPage({ action: "syncOff", on: settings.syncOff });
+    if (nicoLayer) nicoLayer.style.setProperty("--cp-nico-emote-opacity", nicoEmoteOpacity());
     if (settings.nico && !wasNico) nicoTurnedOn();
     if (!settings.nico) clearNico();
     if (!settings.lightsButton && lightsOn) setLights(false);
@@ -511,6 +513,12 @@
     return clamp(settings.nicoSpeed ?? DEFAULTS.nicoSpeed, 50, 200) / 100;
   }
 
+  // How see-through the flying emotes are (10-100%, from the popup), for
+  // content.css: 1 is solid.
+  function nicoEmoteOpacity() {
+    return String(clamp(settings.nicoEmoteOpacity ?? DEFAULTS.nicoEmoteOpacity, 10, 100) / 100);
+  }
+
   function geometry(layer) {
     const width = layer.clientWidth, height = layer.clientHeight;
     const scale = Math.max(1, height / (NICO_MAX_LANES * NICO_LANE_HEIGHT));
@@ -526,6 +534,7 @@
     if (nicoLayer && nicoLayer.parentElement === box) return nicoLayer;
     nicoLayer = document.createElement("div");
     nicoLayer.className = "cp-nico";
+    nicoLayer.style.setProperty("--cp-nico-emote-opacity", nicoEmoteOpacity());
     box.appendChild(nicoLayer);
     laneOccupants = new Map();
     layerObserver?.disconnect();
@@ -624,6 +633,13 @@
       if (!emotes.length) return null;
       const space = () => clone.ownerDocument.createTextNode(" ");
       clone.replaceChildren(...emotes.flatMap(([, img], i) => (i ? [space(), img] : [img])));
+    }
+    // Text only (also an option): the emotes are left out, and a message
+    // that's nothing but emotes doesn't fly.
+    else if (settings.nicoTextOnly) {
+      for (const [, img] of emotes) img.remove();
+      if (clone.textContent.trim() === "") return null;
+      return { div, content: clone, ready: emotesReady([], clone) };
     }
     const hasText = clone.textContent.trim() !== "";
     if (!hasText && !emotes.length) return null;

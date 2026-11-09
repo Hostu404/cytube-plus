@@ -1,11 +1,13 @@
 // The toolbar popup: the settings, and the blacklist of channels the add-on is off on.
 const api = globalThis.browser ?? globalThis.chrome;
 const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
-  clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoSpeed: 100, dim: 90, peekSeconds: 4,
+  clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoTextOnly: false, nicoSpeed: 100,
+  nicoEmoteOpacity: 100, dim: 90, peekSeconds: 4,
   chatDim: 40 };
 // How the sliders' values read.
 const SHOW = {
   nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
+  nicoEmoteOpacity: (v) => v + "%",
   dim: (v) => v + "%",
   peekSeconds: (v) => (v === 0 ? "Off" : v + (v === 1 ? " second" : " seconds")),
   chatDim: (v) => v + "%",
@@ -38,6 +40,8 @@ function showSettings(settings) {
   }
   document.getElementById("nico-sliders").classList.toggle("off", !s.nico);
   document.getElementById("nico-emotes-row").classList.toggle("off", !s.nico);
+  document.getElementById("nico-text-row").classList.toggle("off", !s.nico);
+  document.getElementById("nico-opacity-slider").classList.toggle("off", s.nico && s.nicoTextOnly);
   document.getElementById("lights-sliders").classList.toggle("off", !s.lightsButton);
   document.getElementById("chat-dim-row").classList.toggle("off", !s.lightsButton);
   document.getElementById("chat-dim-sliders").classList.toggle("off", !s.lightsButton || !s.chatDimSeparate);
@@ -98,7 +102,11 @@ for (const key of Object.keys(DEFAULTS)) {
   if (input.type === "range") input.addEventListener("input", () => showSlider(input, input.value));
   input.addEventListener("change", async () => {
     const { settings } = await api.storage.local.get({ settings: DEFAULTS });
-    await api.storage.local.set({ settings: { ...DEFAULTS, ...settings, [key]: valueOf() } });
+    const next = { ...DEFAULTS, ...settings, [key]: valueOf() };
+    // Emotes only and text only can't both be on: turning one on turns the other off.
+    if (key === "nicoEmotesOnly" && next.nicoEmotesOnly) next.nicoTextOnly = false;
+    if (key === "nicoTextOnly" && next.nicoTextOnly) next.nicoEmotesOnly = false;
+    await api.storage.local.set({ settings: next });
   });
 }
 

@@ -34,8 +34,11 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 - **Niconico comments**: the square button under the video makes new chat
   messages fly across it, emotes included, and coloured text like
   greentext keeps its colour. They show in fullscreen too, and their speed
-  can be changed in the toolbar popup (half to double). With **Emotes
-  only** on, just the emotes fly, and messages without one stay in chat. Nothing is saved
+  can be changed in the toolbar popup (half to double), as can how
+  see-through the flying emotes are (**Emote opacity**, 10–100%). With **Emotes
+  only** on, just the emotes fly, and messages without one stay in chat;
+  with **Text only** on, the emotes are left out, and messages that are only
+  emotes stay in chat. Nothing is saved
   up while the tab is hidden: only what's said while you're watching
   flies.
 - **Click names and emotes**: click a name in chat to reply to that person,

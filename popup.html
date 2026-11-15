@@ -29,89 +29,17 @@
     <label class="row">
       <span class="text">
         <span class="title">Polished look</span>
-        <span class="hint">Cleaner chat, playlist, poll and player, and lighter for the browser to draw. Channel CSS still overrides it.</span>
+        <span class="hint">Tidier chat, playlist and player.</span>
       </span>
       <input type="checkbox" role="switch" id="polished">
     </label>
     <label class="row">
       <span class="text">
         <span class="title">Coloured names</span>
-        <span class="hint">Every name in chat gets its own colour. Staff keep their rank colours.</span>
+        <span class="hint">Every name gets its own colour.</span>
       </span>
       <input type="checkbox" role="switch" id="colourNames">
     </label>
-  </section>
-
-  <section>
-    <h2>Video</h2>
-    <label class="row">
-      <span class="text">
-        <span class="title">Niconico comments</span>
-        <span class="hint">Chat messages fly across the video. Same as the square button under it.</span>
-      </span>
-      <input type="checkbox" role="switch" id="nico">
-    </label>
-    <div class="sliders" id="nico-sliders">
-      <label class="slider">
-        <span class="slider-head"><span>Speed</span><output id="nicoSpeed-value"></output></span>
-        <input type="range" id="nicoSpeed" min="50" max="200" step="25">
-      </label>
-      <label class="slider" id="nico-opacity-slider">
-        <span class="slider-head"><span>Emote opacity</span><output id="nicoEmoteOpacity-value"></output></span>
-        <input type="range" id="nicoEmoteOpacity" min="10" max="100" step="5">
-      </label>
-    </div>
-    <label class="row" id="nico-emotes-row">
-      <span class="text">
-        <span class="title">Emotes only</span>
-        <span class="hint">Only the emotes in the message fly.</span>
-      </span>
-      <input type="checkbox" role="switch" id="nicoEmotesOnly">
-    </label>
-    <label class="row" id="nico-text-row">
-      <span class="text">
-        <span class="title">Text only</span>
-        <span class="hint">Only the text in the message flies.</span>
-      </span>
-      <input type="checkbox" role="switch" id="nicoTextOnly">
-    </label>
-    <label class="row">
-      <span class="text">
-        <span class="title">Turn off sync</span>
-        <span class="hint">Pause and skip the video on your own, or click a title in the playlist to watch it. The bar under the video puts you back in sync.</span>
-      </span>
-      <input type="checkbox" role="switch" id="syncOff">
-    </label>
-    <label class="row">
-      <span class="text">
-        <span class="title">Lights down button</span>
-        <span class="hint">Bulb button under the video that dims the rest of the page. Click outside the video to lift it for a bit.</span>
-      </span>
-      <input type="checkbox" role="switch" id="lightsButton">
-    </label>
-    <div class="sliders" id="lights-sliders">
-      <label class="slider">
-        <span class="slider-head"><span>Darkness</span><output id="dim-value"></output></span>
-        <input type="range" id="dim" min="30" max="100" step="5">
-      </label>
-      <label class="slider">
-        <span class="slider-head"><span>Lifts for</span><output id="peekSeconds-value"></output></span>
-        <input type="range" id="peekSeconds" min="0" max="10" step="1">
-      </label>
-    </div>
-    <label class="row" id="chat-dim-row">
-      <span class="text">
-        <span class="title">Dim the chat separately</span>
-        <span class="hint">Chat gets its own lighter dim.</span>
-      </span>
-      <input type="checkbox" role="switch" id="chatDimSeparate">
-    </label>
-    <div class="sliders" id="chat-dim-sliders">
-      <label class="slider">
-        <span class="slider-head"><span>Chat darkness</span><output id="chatDim-value"></output></span>
-        <input type="range" id="chatDim" min="0" max="100" step="5">
-      </label>
-    </div>
   </section>
 
   <section>
@@ -119,23 +47,141 @@
     <label class="row">
       <span class="text">
         <span class="title">Highlight mentions and PMs</span>
-        <span class="hint">Messages that mention you and PMs stand out.</span>
       </span>
       <input type="checkbox" role="switch" id="highlights">
     </label>
     <label class="row">
       <span class="text">
         <span class="title">Click names and emotes</span>
-        <span class="hint">Click a name to reply, or an emote to add it to your message, with any effects it has.</span>
+        <span class="hint">A name to reply, an emote to use it.</span>
       </span>
       <input type="checkbox" role="switch" id="clickToInsert">
     </label>
     <label class="row">
       <span class="text">
         <span class="title">Shrink big emotes</span>
-        <span class="hint">Oversized emotes get smaller, more so mid-message. Small ones are left alone.</span>
       </span>
       <input type="checkbox" role="switch" id="emoteSizes">
+    </label>
+  </section>
+
+  <!-- A feature's own settings show only while it's on. -->
+  <section>
+    <h2>Niconico comments</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Fly chat over the video</span>
+        <span class="hint">Same as the square button under it.</span>
+      </span>
+      <input type="checkbox" role="switch" id="nico">
+    </label>
+    <div class="sub" id="nico-sub">
+      <div class="sliders">
+        <label class="slider">
+          <span class="slider-head"><span>Speed</span><output id="nicoSpeed-value"></output></span>
+          <input type="range" id="nicoSpeed" min="50" max="200" step="25">
+        </label>
+        <label class="slider" id="nico-opacity-slider">
+          <span class="slider-head"><span>Emote opacity</span><output id="nicoEmoteOpacity-value"></output></span>
+          <input type="range" id="nicoEmoteOpacity" min="10" max="100" step="5">
+        </label>
+      </div>
+      <label class="row">
+        <span class="text">
+          <span class="title">Emotes only</span>
+        </span>
+        <input type="checkbox" role="switch" id="nicoEmotesOnly">
+      </label>
+      <label class="row">
+        <span class="text">
+          <span class="title">Text only</span>
+        </span>
+        <input type="checkbox" role="switch" id="nicoTextOnly">
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Hybrid chat</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Chat over fullscreen video</span>
+        <span class="hint">Same as the triangle button under it.</span>
+      </span>
+      <input type="checkbox" role="switch" id="hybrid">
+    </label>
+    <div class="sub" id="hybrid-sub">
+      <div class="sliders">
+        <label class="slider">
+          <span class="slider-head"><span>Text size</span><output id="hybridTextSize-value"></output></span>
+          <input type="range" id="hybridTextSize" min="80" max="200" step="10">
+        </label>
+        <label class="slider">
+          <span class="slider-head"><span>Opacity</span><output id="hybridOpacity-value"></output></span>
+          <input type="range" id="hybridOpacity" min="20" max="100" step="5">
+        </label>
+      </div>
+      <label class="row">
+        <span class="text">
+          <span class="title">On the left</span>
+          <span class="hint">Off puts it on the right.</span>
+        </span>
+        <input type="checkbox" role="switch" id="hybridLeft">
+      </label>
+      <label class="row">
+        <span class="text">
+          <span class="title">Dim when quiet</span>
+          <span class="hint">Fades after 15 seconds of quiet.</span>
+        </span>
+        <input type="checkbox" role="switch" id="hybridDims">
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lights down</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Bulb button</span>
+        <span class="hint">Dims the page around the video.</span>
+      </span>
+      <input type="checkbox" role="switch" id="lightsButton">
+    </label>
+    <div class="sub" id="lights-sub">
+      <div class="sliders">
+        <label class="slider">
+          <span class="slider-head"><span>Darkness</span><output id="dim-value"></output></span>
+          <input type="range" id="dim" min="30" max="100" step="5">
+        </label>
+        <label class="slider">
+          <span class="slider-head"><span>Lifts for</span><output id="peekSeconds-value"></output></span>
+          <input type="range" id="peekSeconds" min="0" max="10" step="1">
+        </label>
+      </div>
+      <label class="row">
+        <span class="text">
+          <span class="title">Dim the chat separately</span>
+          <span class="hint">Chat gets its own lighter dim.</span>
+        </span>
+        <input type="checkbox" role="switch" id="chatDimSeparate">
+      </label>
+      <div class="sliders" id="chat-dim-sliders">
+        <label class="slider">
+          <span class="slider-head"><span>Chat darkness</span><output id="chatDim-value"></output></span>
+          <input type="range" id="chatDim" min="0" max="100" step="5">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sync</h2>
+    <label class="row">
+      <span class="text">
+        <span class="title">Turn off sync</span>
+        <span class="hint">Watch at your own pace.</span>
+      </span>
+      <input type="checkbox" role="switch" id="syncOff">
     </label>
   </section>
 

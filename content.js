@@ -8,6 +8,8 @@
 //    list shows them in.
 //  - Niconico comments: new chat messages (or only their emotes) fly
 //    across the video in lanes, with limits for when chat floods.
+//  - Hybrid chat: in CyTube's fullscreen, the chat itself over the video,
+//    down one side, and usable there (never with the Niconico comments).
 //  - Lights down: dims everything around the video; a click outside it
 //    lifts the dark a little for a few seconds. The chat can have a lighter
 //    dark of its own, which stays as it is: then only a click outside both
@@ -40,9 +42,9 @@
   const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
     clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoTextOnly: false, nicoSpeed: 100,
     nicoEmoteOpacity: 100, dim: 90, peekSeconds: 4,
-    chatDim: 40 };
+    chatDim: 40, hybrid: false, hybridLeft: true, hybridTextSize: 100, hybridOpacity: 100, hybridDims: false };
   const ALL_OFF = { polished: false, colourNames: false, nico: false, lightsButton: false, syncOff: false, highlights: false,
-    clickToInsert: false, emoteSizes: false };
+    clickToInsert: false, emoteSizes: false, hybrid: false };
   // The blacklist: channels it stays off on, until someone takes them off.
   const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 
@@ -110,6 +112,7 @@
       placeScrim();
       setDarkness(restingLevel(), 250, "ease-in-out");
     }
+    updateHybrid();
   }
 
   // ---- polished look --------------------------------------------------------
@@ -283,8 +286,10 @@
     return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
   }
 
-  // The chat's own background, looking up past see-through elements.
+  // The chat's own background, looking up past see-through elements. (While
+  // hybrid chat has it over the video, the one it had in the page.)
   function findChatBackground() {
+    if (hybrid) return hybrid.chatBackground;
     let el = document.getElementById("messagebuffer");
     while (el) {
       const c = parseColour(getComputedStyle(el).backgroundColor);
@@ -1030,6 +1035,489 @@
     return live;
   }
 
+  // ---- hybrid chat ----------------------------------------------------------
+  //
+  // In CyTube's fullscreen, the channel's chat over the video, and fully
+  // usable there: down one side (the left, or the right: from the popup),
+  // from the bottom up, with the message box in the middle of the bottom
+  // edge. It's the chat itself, not a copy: its messages and its box are
+  // moved into the fullscreen video while it's there, and put back where
+  // they were the moment it isn't, so CyTube's own chat (sending, tab
+  // completion, the box's history) and the add-on's clicks on names and
+  // emotes work there as ever. While it's showing:
+  //  - the video can't be clicked: a click, or moving the mouse, brings up
+  //    the controls (leave fullscreen, the title, Hide chat and the message
+  //    box) for a few seconds, and a tap brings them up or puts them away.
+  //    Nothing reaches the player;
+  //  - Niconico comments are off (turning either on turns the other off);
+  //  - links in messages are plain text, so a stray click can't open one.
+  // The smiley in the box opens the channel's emotes (CyTube's own list is a
+  // dialog on the page, which can't show in fullscreen): pick one, or search.
+  // Hide chat puts it away for the rest of that fullscreen visit (the player
+  // can be used again), leaving Show chat in chat's corner, with how many
+  // messages came in meanwhile. With "Dim when quiet" on (in the popup), it
+  // fades right back after a while with nothing new. Private messages stay
+  // in CyTube's own windows, outside fullscreen.
+  //
+  // Nothing runs while it just sits there: no timers but the controls' few
+  // seconds and the quiet wait, and no animation but the fades and slides.
+
+  const HYBRID_CONTROLS_MS = 2500;
+  const HYBRID_REST_AFTER_MS = 15000;
+  // Using the chat (the mouse over it, scrolling it) wakes it, at most this
+  // often.
+  const HYBRID_WAKE_EVERY_MS = 500;
+  // The emote picker puts this many emotes in at a time, and more as it's
+  // scrolled down to them (a channel can have thousands).
+  const EMOTES_PER_DRAW = 120;
+
+  // While it's up: its elements, where the chat's own came from, and how
+  // it's doing. See mountHybrid.
+  let hybrid = null;
+
+  // How see-through it is (20-100%, from the popup), for content.css: 1 is
+  // solid.
+  function hybridOpacity() {
+    return String(clamp(settings.hybridOpacity ?? DEFAULTS.hybridOpacity, 20, 100) / 100);
+  }
+
+  // How big its messages are (80-200%, from the popup), for content.css: 1
+  // is the usual size. The emotes in them grow and shrink with the text.
+  function hybridTextScale() {
+    return String(clamp(settings.hybridTextSize ?? DEFAULTS.hybridTextSize, 80, 200) / 100);
+  }
+
+  // Up while it's on and CyTube's fullscreen (the video box) is.
+  function hybridWanted() {
+    const box = videoBox();
+    return !!settings.hybrid && !!box && document.fullscreenElement === box;
+  }
+
+  function updateHybrid() {
+    if (!hybridWanted()) {
+      if (hybrid) unmountHybrid();
+      return;
+    }
+    if (!hybrid) mountHybrid();
+    if (!hybrid) return;
+    hybrid.root.classList.toggle("cp-hybrid-left", !!settings.hybridLeft);
+    hybrid.root.style.setProperty("--cp-hybrid-opacity", hybridOpacity());
+    hybrid.root.style.setProperty("--cp-hybrid-scale", hybridTextScale());
+    for (const div of chatBuffer()?.children ?? []) markSender(div);
+    wakeChat();
+  }
+  document.addEventListener("fullscreenchange", updateHybrid);
+
+  function mountHybrid() {
+    const box = videoBox();
+    const buffer = chatBuffer();
+    if (!box || !buffer) return;
+    const make = (tag, className) => {
+      const el = document.createElement(tag);
+      el.className = className;
+      return el;
+    };
+    const root = make("div", "cp-hybrid");
+    // Over the whole video, under the chat: a click that isn't on the chat
+    // is a click on the video (see tapVideo).
+    const catcher = make("div", "cp-hybrid-catcher");
+    const column = make("div", "cp-hybrid-column");
+    const top = make("div", "cp-hybrid-top");
+    const exit = make("button", "cp-hybrid-exit");
+    exit.type = "button";
+    exit.title = "Leave fullscreen";
+    exit.setAttribute("aria-label", "Leave fullscreen");
+    exit.appendChild(pathIcon(EXIT_FULLSCREEN));
+    const title = make("span", "cp-hybrid-title");
+    const toggle = make("button", "cp-hybrid-toggle");
+    toggle.type = "button";
+    const chatBox = make("div", "cp-hybrid-box");
+    const emoteBtn = make("button", "cp-hybrid-emote-btn");
+    emoteBtn.type = "button";
+    emoteBtn.title = "Emotes";
+    emoteBtn.setAttribute("aria-label", "Emotes");
+    emoteBtn.appendChild(pathIcon(SMILEY));
+    chatBox.appendChild(emoteBtn);
+    const picker = make("div", "cp-hybrid-emotes");
+    picker.hidden = true;
+    const search = make("input", "cp-hybrid-emote-search");
+    search.type = "search";
+    search.placeholder = "Search emotes";
+    search.setAttribute("aria-label", "Search emotes");
+    search.autocomplete = "off";
+    search.spellcheck = false;
+    const grid = make("div", "cp-hybrid-emote-grid");
+    picker.append(search, grid);
+    top.append(exit, title, toggle);
+    root.append(catcher, column, top, picker, chatBox);
+    box.appendChild(root);
+    const ac = new AbortController();
+    // Names are coloured to read against the chat's background in the page:
+    // still that one while the chat's over the video (see findChatBackground).
+    const chatBackground = findChatBackground();
+    hybrid = { root, title, toggle, chatBox, ac, chatBackground, moved: [], hidden: false, unread: 0, placeholder: false,
+      controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse",
+      emoteBtn, picker, search, grid, pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null };
+
+    // The messages, and the form the box is in (with the guest login, and
+    // CyTube's "New Messages Below", which it puts by the box).
+    moveInto(buffer, column);
+    const line = document.getElementById("chatline");
+    const form = line?.closest("#chatwrap form") ?? (line?.closest("#chatwrap") ? line : null);
+    if (form) moveInto(form, chatBox);
+    // Something to say it's a box, which CyTube's hasn't (taken off after).
+    if (line && !line.placeholder) {
+      line.placeholder = "Message";
+      hybrid.placeholder = true;
+    }
+    // Moved, the chat starts back at the top: down to the newest.
+    buffer.scrollTop = buffer.scrollHeight;
+
+    const on = (target, type, fn, options) => target.addEventListener(type, fn, { ...options, signal: ac.signal });
+    on(root, "pointerdown", (e) => {
+      hybrid.pointer = e.pointerType;
+      wakeSoon();
+    });
+    on(root, "pointermove", (e) => { if (e.pointerType === "mouse") showControls(); });
+    on(catcher, "click", tapVideo);
+    on(buffer, "scroll", wakeSoon, { passive: true });
+    on(exit, "click", () => { document.exitFullscreen().catch(() => {}); });
+    on(toggle, "click", () => setChatHidden(!hybrid.hidden));
+    on(chatBox, "focusin", showControls);
+    on(chatBox, "input", markTyped);
+    on(chatBox, "keydown", sentFromBox);
+    on(document, "keydown", typeFromVideo);
+    on(emoteBtn, "click", () => setPickerOpen(!hybrid.pickerOpen));
+    on(search, "input", () => drawEmotes(true));
+    // Enter takes the first emote found; Escape closes the picker.
+    on(search, "keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        grid.querySelector(".cp-hybrid-emote")?.click();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setPickerOpen(false);
+      }
+    });
+    // An emote picked goes into the box, as CyTube's own list puts it, and
+    // the picker closes.
+    on(grid, "click", (e) => {
+      const item = e.target instanceof Element && e.target.closest(".cp-hybrid-emote");
+      if (!item) return;
+      setPickerOpen(false);
+      insertIntoChat(item.dataset.name);
+    });
+    const viewport = window.visualViewport;
+    if (viewport) {
+      on(viewport, "resize", placeOverKeyboard);
+      on(viewport, "scroll", placeOverKeyboard);
+      placeOverKeyboard();
+    }
+    updateToggle();
+    // The controls come up with the chat for a moment, so its box and Hide
+    // chat are seen.
+    showControls();
+  }
+
+  function unmountHybrid() {
+    const h = hybrid;
+    hybrid = null;
+    h.ac.abort();
+    h.emoteWatch?.disconnect();
+    clearTimeout(h.controlsTimer);
+    clearTimeout(h.restTimer);
+    const focused = h.chatBox.contains(document.activeElement) ? document.activeElement : null;
+    for (const moved of h.moved) putBack(moved);
+    if (h.placeholder) document.getElementById("chatline")?.removeAttribute("placeholder");
+    h.root.remove();
+    const buffer = chatBuffer();
+    if (buffer) buffer.scrollTop = buffer.scrollHeight;
+    // Leaving fullscreen resizes the window first, so CyTube sized the chat
+    // for the page while its box was still in here: once more, now it's back.
+    window.dispatchEvent(new Event("resize"));
+    if (focused?.isConnected) focused.focus({ preventScroll: true });
+  }
+
+  // Each of the chat's own elements leaves a mark where it was, to go back
+  // to exactly.
+  function moveInto(el, parent) {
+    const marker = document.createComment(" cytube-plus: hybrid chat ");
+    el.before(marker);
+    parent.appendChild(el);
+    hybrid.moved.push({ el, marker });
+  }
+
+  function putBack({ el, marker }) {
+    if (marker.isConnected) marker.replaceWith(el);
+    // Its place gone (a channel's script redid the chat): in the chat, at least.
+    else (document.getElementById("chatwrap") ?? document.body).appendChild(el);
+  }
+
+  // What's playing, as CyTube shows it above the video, without its
+  // "Currently Playing:".
+  function currentTitle() {
+    const text = document.getElementById("currenttitle")?.textContent.trim() ?? "";
+    return text.replace(/^currently playing:\s*/i, "");
+  }
+
+  // A click on the video (not on the chat): the keyboard goes, and the
+  // controls come up; a tap brings them up or puts them away. Nothing
+  // reaches the player.
+  function tapVideo() {
+    if (!hybrid) return;
+    if (hybrid.pickerOpen) {
+      setPickerOpen(false);
+      return;
+    }
+    const typingHere = hybrid.chatBox.contains(document.activeElement);
+    if (typingHere) document.activeElement.blur();
+    if (hybrid.pointer !== "mouse" && !typingHere && hybrid.root.classList.contains("cp-controls")) hideControls();
+    else showControls();
+  }
+
+  function showControls() {
+    if (!hybrid) return;
+    const now = performance.now();
+    if (!hybrid.root.classList.contains("cp-controls")) {
+      hybrid.root.classList.add("cp-controls");
+      const title = currentTitle();
+      if (hybrid.title.textContent !== title) hybrid.title.textContent = title;
+      // Not logged in, there's the guest login instead of a message box, and
+      // no emotes to put in it.
+      hybrid.root.classList.toggle("cp-guest", !document.getElementById("chatline")?.offsetParent);
+    } else if (now - hybrid.shownAt < 250) {
+      return;   // a mouse moving: once in a while is plenty
+    }
+    hybrid.shownAt = now;
+    clearTimeout(hybrid.controlsTimer);
+    hybrid.controlsTimer = setTimeout(hideControls, HYBRID_CONTROLS_MS);
+    wakeChat();
+  }
+
+  function hideControls() {
+    if (!hybrid) return;
+    clearTimeout(hybrid.controlsTimer);
+    hybrid.root.classList.remove("cp-controls");
+  }
+
+  // Hide chat, and Show chat. Put away, it leaves the video to the player,
+  // and Show chat in its corner counts what's said meanwhile.
+  function setChatHidden(hidden) {
+    if (!hybrid) return;
+    hybrid.hidden = hidden;
+    hybrid.unread = 0;
+    hybrid.root.classList.toggle("cp-chat-hidden", hidden);
+    if (hidden) {
+      setPickerOpen(false);
+      if (hybrid.chatBox.contains(document.activeElement)) document.activeElement.blur();
+      hideControls();
+    } else {
+      const buffer = chatBuffer();
+      if (buffer) buffer.scrollTop = buffer.scrollHeight;
+      showControls();
+    }
+    updateToggle();
+    wakeChat();
+  }
+
+  function updateToggle() {
+    if (!hybrid) return;
+    const n = hybrid.unread;
+    hybrid.toggle.textContent = !hybrid.hidden ? "Hide chat" : n === 0 ? "Show chat" : `Show chat · ${n > 99 ? "99+" : n}`;
+  }
+
+  // Something typed and not yet sent keeps the box up, as being in it does.
+  function markTyped() {
+    if (!hybrid) return;
+    const typed = [...hybrid.chatBox.querySelectorAll("input")].some((input) => input.value !== "");
+    hybrid.root.classList.toggle("cp-has-text", typed);
+  }
+
+  // Sent: CyTube empties the box as it sends (its own handler has run by
+  // now). With a finger, the keyboard goes down with it, rather than the box
+  // sitting there focused; with a mouse and keyboard, it stays for the next.
+  function sentFromBox(e) {
+    if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
+    markTyped();
+    if (e.target.value === "" && hybrid.pointer !== "mouse") e.target.blur();
+  }
+
+  // Enter, with nothing being typed in, goes to the message box (a button
+  // of its own still takes it). Not the Enter that sent a message from the
+  // box, on its way up: with a finger, that one has just put the keyboard
+  // away (see sentFromBox).
+  function typeFromVideo(e) {
+    if (e.key !== "Enter" || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!hybrid || hybrid.hidden || typing() || hybrid.chatBox.contains(e.target)) return;
+    const active = document.activeElement;
+    if (active && hybrid.root.contains(active) && active.matches("button")) return;
+    const input = [...hybrid.chatBox.querySelectorAll("input")].find((i) => !i.disabled && i.offsetParent !== null);
+    if (!input) return;
+    e.preventDefault();
+    input.focus();
+  }
+
+  // A phone's keyboard over the bottom of the screen: the box and the
+  // messages move up above it.
+  function placeOverKeyboard() {
+    const viewport = window.visualViewport;
+    if (!hybrid || !viewport) return;
+    const covered = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+    hybrid.root.style.setProperty("--cp-keyboard", covered + "px");
+  }
+
+  // The quiet wait (with "Dim when quiet" on) starts again with anything new
+  // or anything done with the chat; once it's over, the chat fades right
+  // back until either.
+  function wakeChat() {
+    if (!hybrid) return;
+    hybrid.wokenAt = performance.now();
+    hybrid.root.classList.remove("cp-resting");
+    clearTimeout(hybrid.restTimer);
+    hybrid.restTimer = settings.hybridDims ? setTimeout(restChat, HYBRID_REST_AFTER_MS) : 0;
+  }
+
+  function wakeSoon() {
+    if (hybrid && performance.now() - hybrid.wokenAt >= HYBRID_WAKE_EVERY_MS) wakeChat();
+  }
+
+  function restChat() {
+    if (!hybrid) return;
+    // Not while it's in use: its controls up, or its box being written in.
+    const root = hybrid.root;
+    if (root.classList.contains("cp-controls") || root.classList.contains("cp-has-text") || hybrid.pickerOpen ||
+        hybrid.chatBox.contains(document.activeElement)) {
+      hybrid.restTimer = setTimeout(restChat, HYBRID_REST_AFTER_MS);
+      return;
+    }
+    root.classList.add("cp-resting");
+  }
+
+  // A person's message, not the server's (nor CyTube's own lines).
+  function isPersonsMessage(div) {
+    return div.id !== "newmessages-indicator" && !fromServer(div) && !!senderOf(div);
+  }
+
+  // The bar down a message's outer edge is in its sender's colour (with
+  // Coloured names on; otherwise one quiet colour for everyone, in
+  // content.css).
+  function markSender(div) {
+    if (!(div instanceof HTMLElement) || !isPersonsMessage(div)) return;
+    const sender = settings.colourNames ? senderOf(div) : "";
+    if (sender) div.style.setProperty("--cp-sender", nameColour(sender));
+    else div.style.removeProperty("--cp-sender");
+  }
+
+  // New messages while it's up: wake it, and while it's put away, count
+  // what people say (not the history CyTube replays) for Show chat.
+  function hybridHeard(said) {
+    if (hybrid.hidden && said) {
+      hybrid.unread += said;
+      updateToggle();
+    }
+    wakeChat();
+  }
+
+  // ---- hybrid chat's emote picker
+
+  // The channel's emotes, from the page (sync-page.js reads CyTube's list
+  // there): asked for each time the picker opens, and answered at once.
+  let channelEmotes = { key: "", list: [] };
+
+  document.addEventListener("cytube-plus:emotes", (e) => {
+    if (typeof e.detail !== "string" || e.detail === channelEmotes.key) return;
+    let data;
+    try { data = JSON.parse(e.detail); } catch (err) { return; }
+    if (!data || !Array.isArray(data.emotes)) return;
+    const list = data.emotes
+      .filter((x) => Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string")
+      .map(([name, image]) => ({ name, image, lower: name.toLowerCase() }));
+    // As CyTube's own list, when its options sort it.
+    if (data.alphabetical) list.sort((a, b) => (a.lower < b.lower ? -1 : a.lower > b.lower ? 1 : 0));
+    channelEmotes = { key: e.detail, list };
+    if (hybrid?.pickerOpen) drawEmotes(true);
+  });
+
+  function setPickerOpen(open) {
+    if (!hybrid || hybrid.pickerOpen === open) return;
+    // The list as it is now (asked before it's open, so it's drawn once).
+    if (open) toPage({ action: "emotes" });
+    hybrid.pickerOpen = open;
+    hybrid.picker.hidden = !open;
+    hybrid.root.classList.toggle("cp-emotes-open", open);
+    hybrid.emoteBtn.classList.toggle("cp-on", open);
+    if (open) {
+      drawEmotes(true);
+      // With a mouse, straight into the search; a finger would bring a
+      // keyboard up over the emotes.
+      if (hybrid.pointer === "mouse") hybrid.search.focus({ preventScroll: true });
+    } else {
+      // Closed, its emotes go, pictures and all, and the search with them:
+      // it opens on the whole list again.
+      hybrid.emoteWatch?.disconnect();
+      hybrid.emoteWatch = null;
+      hybrid.emoteMore = null;
+      hybrid.grid.replaceChildren();
+      hybrid.search.value = "";
+    }
+    wakeChat();
+  }
+
+  // The emotes whose names have what's typed in the search in them: the
+  // first lot, then more as the picker's scrolled near its end. Pictures
+  // load as they come into sight.
+  function drawEmotes(fresh) {
+    if (!hybrid?.pickerOpen) return;
+    const grid = hybrid.grid;
+    if (fresh) {
+      const query = hybrid.search.value.trim().toLowerCase();
+      hybrid.emoteMatches = query ? channelEmotes.list.filter((x) => x.lower.includes(query)) : channelEmotes.list;
+      hybrid.emotesShown = 0;
+      grid.replaceChildren();
+      grid.scrollTop = 0;
+    }
+    if (hybrid.emoteMore) {
+      hybrid.emoteWatch?.unobserve(hybrid.emoteMore);
+      hybrid.emoteMore.remove();
+      hybrid.emoteMore = null;
+    }
+    const matches = hybrid.emoteMatches;
+    if (!matches.length) {
+      const none = document.createElement("p");
+      none.className = "cp-hybrid-emote-none";
+      none.textContent = channelEmotes.list.length ? "No emotes match." : "This channel has no emotes.";
+      grid.appendChild(none);
+      return;
+    }
+    const end = Math.min(matches.length, hybrid.emotesShown + EMOTES_PER_DRAW);
+    const items = [];
+    for (let i = hybrid.emotesShown; i < end; i++) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "cp-hybrid-emote";
+      button.title = matches[i].name;
+      button.dataset.name = matches[i].name;
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.alt = matches[i].name;
+      img.src = matches[i].image;
+      button.appendChild(img);
+      items.push(button);
+    }
+    hybrid.emotesShown = end;
+    grid.append(...items);
+    if (end < matches.length) {
+      hybrid.emoteMore = document.createElement("div");
+      hybrid.emoteMore.className = "cp-hybrid-emote-more";
+      grid.appendChild(hybrid.emoteMore);
+      hybrid.emoteWatch ??= new IntersectionObserver((entries) => {
+        if (entries.some((x) => x.isIntersecting)) drawEmotes(false);
+      }, { root: grid, rootMargin: "300px" });
+      hybrid.emoteWatch.observe(hybrid.emoteMore);
+    }
+  }
+
   // ---- emote sizes ------------------------------------------------------------
 
   // Shrink big emotes: an emote taller than the limit shrinks to it, 36px
@@ -1179,14 +1667,21 @@
   function onMessages(nodes) {
     sizeMessages(nodes);
     const fresh = [];
+    let said = 0;      // new messages from people, for hybrid chat
     for (const div of nodes) {
       if (!(div instanceof HTMLElement)) continue;
       if (settings.colourNames) colourName(div);
-      if (!isLive(div) || !settings.nico || document.hidden) continue;
+      const live = isLive(div);
+      if (hybrid) {
+        markSender(div);
+        if (live && isPersonsMessage(div)) said++;
+      }
+      if (!live || !settings.nico || document.hidden) continue;
       const item = nicoContent(div);
       if (item) fresh.push(item);
     }
     if (fresh.length) enqueue(fresh.slice(-NICO_MAX_BURST));
+    if (hybrid) hybridHeard(said);
   }
 
   function watchChat() {
@@ -1631,9 +2126,20 @@
   // as heavy as theirs.
   const BULB = "M9 21h6v-1.5H9zm3-19a7 7 0 0 0-4 12.74V17h8v-2.26A7 7 0 0 0 12 2z";
   const BULB_OUTLINE = BULB + "M14.57 12.69 13.6 13.4v1.2h-3.2v-1.2l-.97-.71a4.5 4.5 0 1 1 5.14 0z";
+  // Hybrid chat's triangle, the same: filled while it's on, otherwise an
+  // outline as heavy as the Niconico square's.
+  const TRIANGLE = "M12 2.04 23.5 21.96H.5z";
+  const TRIANGLE_OUTLINE = TRIANGLE + "M12 8.44 17.96 18.76H6.04z";
+  // Hybrid chat's emote picker: a smiling face.
+  const SMILEY = "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20zM12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z" +
+    "M8.5 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM15.5 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM7.5 14h9a4.5 4.5 0 0 1-9 0z";
+  // Leaving fullscreen: four corners, pointing in.
+  const EXIT_FULLSCREEN = "M8 3h2v7H3V8h5zm6 0h2v5h5v2h-7zM3 14h7v7H8v-5H3zm11 0h7v2h-5v5h-2z";
   const SVG_NS = "http://www.w3.org/2000/svg";
 
-  function bulbIcon(path) {
+  // An icon drawn from [path], in the text's colour (with holes where its
+  // shapes overlap, for an outline).
+  function pathIcon(path) {
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("class", "cp-icon");
@@ -1654,6 +2160,7 @@
 
   let lightsBtn = null;
   let nicoBtn = null;
+  let hybridBtn = null;
 
   function makeButton(title, onClick) {
     const b = document.createElement("button");
@@ -1673,14 +2180,24 @@
     const group = document.createElement("div");
     group.id = "cytube-plus-controls";
     group.className = "btn-group pull-right";
+    // The Niconico comments and hybrid chat don't go together: turning
+    // either on turns the other off.
     nicoBtn = makeButton("Niconico comments", () => {
       const wasNico = settings.nico;
       settings.nico = !settings.nico;
+      if (settings.nico) settings.hybrid = false;
+      saveSettings();
+      applySettings(wasNico);
+    });
+    hybridBtn = makeButton("Hybrid chat", () => {
+      const wasNico = settings.nico;
+      settings.hybrid = !settings.hybrid;
+      if (settings.hybrid) settings.nico = false;
       saveSettings();
       applySettings(wasNico);
     });
     lightsBtn = makeButton("Lights down", () => setLights(!lightsOn));
-    group.append(nicoBtn, lightsBtn);
+    group.append(nicoBtn, hybridBtn, lightsBtn);
     const videoControls = document.getElementById("videocontrols");
     if (videoControls && videoControls.parentElement === row) videoControls.after(group);
     else row.appendChild(group);
@@ -1690,6 +2207,7 @@
   function removeButtons() {
     document.getElementById("cytube-plus-controls")?.remove();
     nicoBtn = null;
+    hybridBtn = null;
     lightsBtn = null;
   }
 
@@ -1699,8 +2217,13 @@
       nicoBtn.classList.toggle("active", settings.nico);
       nicoBtn.title = settings.nico ? "Turn off Niconico comments" : "Turn on Niconico comments";
     }
+    if (hybridBtn) {
+      hybridBtn.replaceChildren(pathIcon(settings.hybrid ? TRIANGLE : TRIANGLE_OUTLINE));
+      hybridBtn.classList.toggle("active", settings.hybrid);
+      hybridBtn.title = settings.hybrid ? "Turn off hybrid chat" : "Turn on hybrid chat: the chat over the video in fullscreen";
+    }
     if (lightsBtn) {
-      lightsBtn.replaceChildren(bulbIcon(lightsOn ? BULB : BULB_OUTLINE));
+      lightsBtn.replaceChildren(pathIcon(lightsOn ? BULB : BULB_OUTLINE));
       lightsBtn.classList.toggle("active", lightsOn);
       lightsBtn.title = lightsOn ? "Lights up" : "Lights down";
       lightsBtn.style.display = settings.lightsButton ? "" : "none";

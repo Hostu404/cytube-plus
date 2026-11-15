@@ -1,6 +1,6 @@
 # CyTube Plus
 
-A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, click a name to reply or an emote to post it, and a switch to turn off sync and watch on your own. Unofficial.
+A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, hybrid chat in fullscreen, click a name to reply or an emote to post it, and a switch to turn off sync and watch on your own. Unofficial.
 
 **Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (Firefox and Firefox for Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
 
@@ -41,6 +41,24 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   emotes stay in chat. Nothing is saved
   up while the tab is hidden: only what's said while you're watching
   flies.
+- **Hybrid chat**: the triangle button under the video puts the chat
+  itself over the video in fullscreen (CyTube's fullscreen button), down
+  the left side (or the right: turn off **On the left** in the toolbar
+  popup), and it works there as usual: scroll back, type, click names and
+  emotes, and pick from the channel's emotes with the smiley in the
+  message box (with a search). The message box sits in the middle of the
+  bottom edge, and comes up with the title, **Hide chat** and a button to
+  leave fullscreen when you click the video or move the mouse; the video
+  itself can't be clicked while the chat is up. **Hide chat** puts it away
+  and gives you the player back, and **Show chat** brings it back with a
+  count of what you missed. Messages have a soft dark edge so they read
+  over any picture, emotes in them are kept small, and links are plain
+  text, so a stray click can't open one. How big the text is
+  (**Text size**, 80–200%) and how see-through it is (**Opacity**,
+  20–100%) can be changed in the popup, and with **Dim when quiet** on it
+  fades right back after 15 seconds without a new message. It and the
+  Niconico comments turn each other off. Private messages stay in their
+  own windows, outside fullscreen.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. An emote shown with one of the
   channel's effects (a flip, a spin, one emote laid over another) comes
@@ -82,9 +100,11 @@ What's changed in each version is on the
   big emotes smaller, never bigger; both can be switched off.)
 - None of CyTube's code is changed, and the add-on's buttons sit in a group
   of their own, so a channel's scripts find the page as they expect. The
-  one exception is while sync is off: the two handlers
+  exceptions: while sync is off, the two handlers
   that move the video along with the room are wrapped, and they're put
-  back as soon as you're in sync again.
+  back as soon as you're in sync again; and while hybrid chat is up in
+  fullscreen, the chat's messages and its box are moved into the video,
+  and put back exactly where they were when you leave fullscreen.
 - If a channel's script already does something when a name is clicked, or
   colours a name itself, the add-on leaves that alone.
 

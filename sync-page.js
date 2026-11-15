@@ -17,6 +17,10 @@
 // wrappers come off and CyTube asks the server for the room's video
 // ("playerReady", as it does when it first loads), so it's back where the
 // room is at once.
+//
+// It also hands content.js the channel's emotes, for hybrid chat's emote
+// picker in fullscreen (where CyTube's own emote list can't show): see
+// tellEmotes.
 (() => {
   "use strict";
 
@@ -25,6 +29,7 @@
 
   const FROM_ADDON = "cytube-plus:sync";
   const TO_ADDON = "cytube-plus:sync-state";
+  const EMOTES_TO_ADDON = "cytube-plus:emotes";
   // The two lists a title can be picked from: the playlist, and search
   // results (the channel's library, or YouTube).
   const LISTS = "#queue, #library";
@@ -403,6 +408,22 @@
     pickItem(li);
   }, true);
 
+  // ---- the channel's emotes --------------------------------------------------
+
+  // Each emote's name and picture, in the order CyTube's own emote list has
+  // them, and whether CyTube's options sort that list alphabetically.
+  // Nothing is changed: it's only read.
+  function tellEmotes() {
+    const emotes = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes : [];
+    document.dispatchEvent(new CustomEvent(EMOTES_TO_ADDON, {
+      detail: JSON.stringify({
+        emotes: emotes.filter((e) => e && typeof e.name === "string" && typeof e.image === "string")
+          .map((e) => [e.name, e.image]),
+        alphabetical: !!window.USEROPTS?.emotelist_sort,
+      }),
+    }));
+  }
+
   // ---- talking to content.js -------------------------------------------------
 
   document.addEventListener(FROM_ADDON, (e) => {
@@ -420,6 +441,8 @@
       // A title picked from the bar's own list.
       const li = [...document.querySelectorAll("#queue > li")].find((row) => $()?.(row).data("uid") === msg.uid);
       if (li) pickItem(li);
+    } else if (msg.action === "emotes") {
+      tellEmotes();
     }
   });
 

@@ -324,3 +324,566 @@
 .cytube-plus-unsynced #queue > li.cp-picked.queue_active .qe_time::before {
   content: "\25B6\00A0You \00B7 Room \00B7\00A0";
 }
+
+/* ---- Hybrid chat -------------------------------------------------------------
+   In CyTube's fullscreen (the video box), the chat over the video: content.js
+   moves the chat's messages and its box in here while it's up, and back
+   after. Everything here is inside .cp-hybrid, which is only ever inside the
+   fullscreen video, so nothing changes anywhere else; !important keeps a
+   channel's CSS for the chat (and the sizes CyTube gives it inline) from
+   pushing it about in here. Above the Niconico comments, which are off
+   while it's on anyway. Fixed, so it's the screen, whatever the box: on a
+   screen wider than 16:9 CyTube's fullscreen box is taller than the
+   screen, and its bottom edge is out of sight. */
+.cp-hybrid {
+  /* The chat's column, and the message box (see .cp-hybrid-box). */
+  --cp-hybrid-col: clamp(240px, 32%, 420px);
+  --cp-hybrid-box: clamp(220px, calc(100% - 2 * (var(--cp-hybrid-col) + 12px)), min(44%, 600px));
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 6 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  color: #fff;
+  text-align: left;
+}
+
+/* Over the whole video, under the chat: it takes every click on the video
+   while chat's up, so nothing reaches the player. The pointer hides with
+   the controls. Gone while chat's put away. */
+.cp-hybrid-catcher {
+  position: absolute !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+.cp-hybrid:not(.cp-controls) .cp-hybrid-catcher {
+  cursor: none;
+}
+
+.cp-hybrid.cp-chat-hidden .cp-hybrid-catcher {
+  display: none !important;
+}
+
+/* The chat's side: the whole height (above a phone's keyboard), a third of
+   the width, but never under 240px or over 420px. Its messages sit at the bottom and
+   scroll up from there. It slides in from its side as it comes up, and out
+   again for Hide chat. */
+.cp-hybrid-column {
+  --cp-hybrid-slide: 12.5%;
+  position: absolute !important;
+  top: 0 !important;
+  bottom: var(--cp-keyboard, 0px) !important;
+  right: 0;
+  width: var(--cp-hybrid-col) !important;
+  margin: 0 !important;
+  padding: 8px 0 !important;
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  opacity: var(--cp-hybrid-opacity, 1);
+  transition: opacity 200ms ease-out, transform 240ms ease-out, visibility 0s;
+  animation: cp-hybrid-in 240ms ease-out;
+}
+
+.cp-hybrid-left .cp-hybrid-column {
+  --cp-hybrid-slide: -12.5%;
+  right: auto;
+  left: 0;
+}
+
+@keyframes cp-hybrid-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--cp-hybrid-slide));
+  }
+}
+
+/* Dim when quiet: faded right back, slowly. */
+.cp-hybrid.cp-resting .cp-hybrid-column {
+  opacity: calc(var(--cp-hybrid-opacity, 1) * 0.25);
+  transition: opacity 1200ms ease-in-out;
+}
+
+.cp-hybrid.cp-chat-hidden .cp-hybrid-column {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(var(--cp-hybrid-slide));
+  transition: opacity 160ms ease-in, transform 200ms ease-in, visibility 0s linear 200ms;
+}
+
+/* The messages: no background, but white with a soft dark edge round
+   every letter, so they read over any picture. Against the screen's edge,
+   each with a slim bar in its sender's colour down that edge (wider, and
+   blue, on one that mentions you). No times; links are plain text that a
+   click goes straight through. */
+.cp-hybrid #messagebuffer {
+  position: absolute !important;
+  inset: auto 0 0 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 4px 12px 4px 8px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  pointer-events: auto !important;
+  color: #fff;
+  /* The text size from the popup: 15px at Normal. */
+  font-size: calc(15px * var(--cp-hybrid-scale, 1)) !important;
+  line-height: 1.4 !important;
+  text-align: right !important;
+}
+
+.cp-hybrid-left #messagebuffer {
+  padding: 4px 8px 4px 12px !important;
+  text-align: left !important;
+}
+
+/* No scrollbar: it scrolls by wheel, finger or keys, as ever. */
+.cp-hybrid #messagebuffer::-webkit-scrollbar {
+  display: none;
+}
+
+.cp-hybrid #messagebuffer > div {
+  display: block !important;
+  margin: 0 !important;
+  padding: 1px 10px 1px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: inset -2px 0 0 var(--cp-sender, rgba(255, 255, 255, 0.45)) !important;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+  overflow-wrap: anywhere;
+}
+
+/* Someone new: a little apart from the message before. */
+.cp-hybrid #messagebuffer > div:has(> span > strong.username) {
+  margin-top: 6px !important;
+}
+
+.cp-hybrid #messagebuffer > div.nick-highlight {
+  box-shadow: inset -3px 0 0 #7fb2e5 !important;
+}
+
+.cp-hybrid-left #messagebuffer > div {
+  padding: 1px 0 1px 10px !important;
+  box-shadow: inset 2px 0 0 var(--cp-sender, rgba(255, 255, 255, 0.45)) !important;
+}
+
+.cp-hybrid-left #messagebuffer > div.nick-highlight {
+  box-shadow: inset 3px 0 0 #7fb2e5 !important;
+}
+
+/* The server's own lines and CyTube's notices: no bar, and quieter. */
+.cp-hybrid #messagebuffer > div:is([class*="server-msg"], [class*="chat-msg-\\$"], .poll-notify) {
+  box-shadow: none !important;
+  opacity: 0.8;
+}
+
+.cp-hybrid #messagebuffer .timestamp {
+  display: none !important;
+}
+
+.cp-hybrid #messagebuffer a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none !important;
+}
+
+/* A posted picture stays small, and emotes do too: at most a line and a
+   bit in a message, and a little bigger when a message is only emotes
+   (both growing and shrinking with the text size). */
+.cp-hybrid #messagebuffer :is(img, video):not(.channel-emote) {
+  max-width: 100% !important;
+  max-height: 120px !important;
+}
+
+.cp-hybrid #messagebuffer :is(img, video).channel-emote {
+  width: auto !important;
+  max-width: 100% !important;
+  max-height: calc(32px * var(--cp-hybrid-scale, 1)) !important;
+  object-fit: contain !important;
+}
+
+.cp-hybrid #messagebuffer > .cp-emote-only :is(img, video).channel-emote {
+  max-height: calc(56px * var(--cp-hybrid-scale, 1)) !important;
+}
+
+/* The controls' top row: leave fullscreen, the title and Hide chat, across
+   the video as far as the chat (the other way round with chat on the left,
+   so Hide chat is still beside it). Up for a few seconds after a click on
+   the video or the mouse moving; in quickly, out slowly. Only its buttons
+   take clicks. */
+.cp-hybrid-top {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0;
+  right: var(--cp-hybrid-col);
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  margin: 0 !important;
+  padding: 12px !important;
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 600ms ease, visibility 0s linear 600ms;
+}
+
+.cp-hybrid.cp-controls .cp-hybrid-top {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 150ms ease, visibility 0s;
+}
+
+.cp-hybrid.cp-controls .cp-hybrid-top :is(.cp-hybrid-exit, .cp-hybrid-toggle) {
+  pointer-events: auto !important;
+}
+
+.cp-hybrid-left .cp-hybrid-top {
+  left: var(--cp-hybrid-col);
+  right: 0;
+  flex-direction: row-reverse;
+}
+
+.cp-hybrid-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-toggle) {
+  flex: none;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font: 500 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  text-shadow: none !important;
+  cursor: pointer;
+}
+
+.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-toggle):is(:hover, :focus-visible) {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: #fff !important;
+  outline: none;
+}
+
+.cp-hybrid .cp-hybrid-exit {
+  width: 38px !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.cp-hybrid-exit .cp-icon {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  top: 0;
+}
+
+.cp-hybrid .cp-hybrid-toggle {
+  height: 32px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 14px !important;
+  white-space: nowrap;
+}
+
+.cp-hybrid-left .cp-hybrid-toggle {
+  margin: 0 auto 0 0 !important;
+}
+
+/* Chat put away: the row is only Show chat, in chat's corner, quiet until
+   the pointer's on it, and there whether the controls are up or not. */
+.cp-hybrid.cp-chat-hidden .cp-hybrid-top {
+  left: 0;
+  right: 0;
+  opacity: 1;
+  visibility: visible;
+  transition: none;
+}
+
+.cp-hybrid.cp-chat-hidden :is(.cp-hybrid-exit, .cp-hybrid-title) {
+  display: none !important;
+}
+
+.cp-hybrid.cp-chat-hidden .cp-hybrid-toggle {
+  pointer-events: auto !important;
+  opacity: 0.45;
+}
+
+.cp-hybrid.cp-chat-hidden .cp-hybrid-toggle:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+
+/* The message box: one light pill in the middle of the bottom edge (above
+   a phone's keyboard), with the emotes' smiley and CyTube's own box in it.
+   As wide as fits between the chat and the same width kept clear on the
+   other side, but at most 44% of the width (and 600px), and never under
+   220px. Up with the controls, and while it's in use or has something in
+   it. Only faded out, never hidden, so a name or an emote clicked in chat
+   can still go into it. */
+.cp-hybrid-box {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: calc(12px + var(--cp-keyboard, 0px)) !important;
+  display: flex !important;
+  align-items: center;
+  width: var(--cp-hybrid-box) !important;
+  max-width: 100% !important;
+  min-height: 44px;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none !important;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.cp-hybrid.cp-controls .cp-hybrid-box,
+.cp-hybrid.cp-has-text .cp-hybrid-box,
+.cp-hybrid.cp-emotes-open .cp-hybrid-box,
+.cp-hybrid .cp-hybrid-box:focus-within {
+  pointer-events: auto !important;
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+.cp-hybrid .cp-hybrid-box:focus-within {
+  border-color: rgba(90, 160, 230, 0.7);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.cp-hybrid.cp-chat-hidden .cp-hybrid-box {
+  pointer-events: none !important;
+  opacity: 0;
+}
+
+.cp-hybrid-box form {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.cp-hybrid-box #chatline {
+  width: 100% !important;
+  height: 42px !important;
+  margin: 0 !important;
+  padding: 0 18px 0 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  text-shadow: none !important;
+}
+
+.cp-hybrid-box #chatline::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* The emotes' smiley, at the box's start. Not for a guest, who has the
+   guest login instead of a box to put an emote in. */
+.cp-hybrid .cp-hybrid-emote-btn {
+  flex: none;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 40px !important;
+  height: 40px !important;
+  margin: 0 0 0 2px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  cursor: pointer;
+}
+
+.cp-hybrid .cp-hybrid-emote-btn:is(:hover, :focus-visible, .cp-on) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
+  outline: none;
+}
+
+.cp-hybrid-emote-btn .cp-icon {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  top: 0;
+}
+
+.cp-hybrid.cp-guest .cp-hybrid-emote-btn {
+  display: none !important;
+}
+
+/* Not logged in: CyTube's guest login, in the pill. */
+.cp-hybrid-box #guestlogin > * {
+  height: 42px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+.cp-hybrid-box #guestlogin > :first-child {
+  padding-left: 18px !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* The emote picker, just above the box: a search, and the channel's emotes
+   to pick from, as wide as the box (or 360px, if that's more). */
+.cp-hybrid-emotes {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: calc(64px + var(--cp-keyboard, 0px)) !important;
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  width: min(calc(100% - 24px), max(var(--cp-hybrid-box), 360px)) !important;
+  max-height: min(380px, calc(100% - 140px - var(--cp-keyboard, 0px))) !important;
+  margin: 0 auto !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(16, 18, 22, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  pointer-events: auto !important;
+}
+
+.cp-hybrid-emotes[hidden] {
+  display: none !important;
+}
+
+.cp-hybrid .cp-hybrid-emote-search {
+  flex: none;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  color: #fff;
+  font: 14px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  outline: none;
+}
+
+.cp-hybrid .cp-hybrid-emote-search:focus {
+  border-color: rgba(90, 160, 230, 0.7);
+}
+
+.cp-hybrid .cp-hybrid-emote-search::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cp-hybrid-emote-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  align-content: start;
+  gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.cp-hybrid .cp-hybrid-emote {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  margin: 0 !important;
+  padding: 4px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.cp-hybrid .cp-hybrid-emote:is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  outline: none;
+}
+
+.cp-hybrid-emote img {
+  max-width: 100%;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.cp-hybrid-emote-more {
+  grid-column: 1 / -1;
+  height: 1px;
+}
+
+.cp-hybrid-emote-none {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* CyTube's "New Messages Below", which it puts by the box: just above it. */
+.cp-hybrid-box #newmessages-indicator {
+  position: absolute !important;
+  bottom: calc(100% + 6px) !important;
+  left: 50% !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 2px 12px !important;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: #fff !important;
+  font-size: 12px;
+  line-height: 22px !important;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cp-hybrid-box #newmessages-indicator-bghack {
+  background: none !important;
+}

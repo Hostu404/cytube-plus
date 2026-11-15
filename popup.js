@@ -3,7 +3,7 @@ const api = globalThis.browser ?? globalThis.chrome;
 const DEFAULTS = { polished: true, colourNames: true, nico: false, lightsButton: true, syncOff: false, highlights: true,
   clickToInsert: true, emoteSizes: true, chatDimSeparate: false, nicoEmotesOnly: false, nicoTextOnly: false, nicoSpeed: 100,
   nicoEmoteOpacity: 100, dim: 90, peekSeconds: 4,
-  chatDim: 40 };
+  chatDim: 40, hybrid: false, hybridLeft: true, hybridTextSize: 100, hybridOpacity: 100, hybridDims: false };
 // How the sliders' values read.
 const SHOW = {
   nicoSpeed: (v) => (v === 100 ? "Normal" : v / 100 + "×"),
@@ -11,6 +11,8 @@ const SHOW = {
   dim: (v) => v + "%",
   peekSeconds: (v) => (v === 0 ? "Off" : v + (v === 1 ? " second" : " seconds")),
   chatDim: (v) => v + "%",
+  hybridTextSize: (v) => (v === 100 ? "Normal" : v + "%"),
+  hybridOpacity: (v) => v + "%",
 };
 const DEFAULT_OFF_CHANNELS = ["the-kinoplex"];
 const SOURCE = "https://github.com/Hostu404/cytube-plus";
@@ -38,13 +40,12 @@ function showSettings(settings) {
     if (input.type === "checkbox") input.checked = s[key];
     else showSlider(input, s[key]);
   }
-  document.getElementById("nico-sliders").classList.toggle("off", !s.nico);
-  document.getElementById("nico-emotes-row").classList.toggle("off", !s.nico);
-  document.getElementById("nico-text-row").classList.toggle("off", !s.nico);
-  document.getElementById("nico-opacity-slider").classList.toggle("off", s.nico && s.nicoTextOnly);
-  document.getElementById("lights-sliders").classList.toggle("off", !s.lightsButton);
-  document.getElementById("chat-dim-row").classList.toggle("off", !s.lightsButton);
-  document.getElementById("chat-dim-sliders").classList.toggle("off", !s.lightsButton || !s.chatDimSeparate);
+  // A feature's own settings only while it's on.
+  document.getElementById("nico-sub").hidden = !s.nico;
+  document.getElementById("nico-opacity-slider").classList.toggle("off", s.nicoTextOnly);
+  document.getElementById("hybrid-sub").hidden = !s.hybrid;
+  document.getElementById("lights-sub").hidden = !s.lightsButton;
+  document.getElementById("chat-dim-sliders").hidden = !s.chatDimSeparate;
 }
 
 function showSlider(input, value) {
@@ -85,7 +86,7 @@ api.storage.local.get({ settings: DEFAULTS, offChannels: DEFAULT_OFF_CHANNELS })
   offChannels = stored.offChannels;
   showChannels();
 });
-// The Niconico button under the video changes the same setting.
+// The Niconico and hybrid chat buttons under the video change the same settings.
 api.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.settings) showSettings(changes.settings.newValue);
@@ -106,6 +107,9 @@ for (const key of Object.keys(DEFAULTS)) {
     // Emotes only and text only can't both be on: turning one on turns the other off.
     if (key === "nicoEmotesOnly" && next.nicoEmotesOnly) next.nicoTextOnly = false;
     if (key === "nicoTextOnly" && next.nicoTextOnly) next.nicoEmotesOnly = false;
+    // Niconico comments and hybrid chat don't go together either.
+    if (key === "nico" && next.nico) next.hybrid = false;
+    if (key === "hybrid" && next.hybrid) next.nico = false;
     await api.storage.local.set({ settings: next });
   });
 }

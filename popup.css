@@ -23,6 +23,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -206,3 +207,8 @@ input[type="range"] {
   cursor: pointer;
 }
 .sliders + .row { border-top: 1px solid var(--line); }
+
+/* A feature's own settings, under its switch (only while it's on). */
+.sub { border-top: 1px solid var(--line); }
+.sub > .sliders:first-child { padding-top: 10px; }
+.row + .sliders { border-top: 1px solid var(--line); padding-top: 10px; }

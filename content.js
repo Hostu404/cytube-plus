@@ -9,7 +9,8 @@
 //  - Niconico comments: new chat messages (or only their emotes) fly
 //    across the video in lanes, with limits for when chat floods.
 //  - Hybrid chat: in CyTube's fullscreen, the chat itself over the video,
-//    down one side, and usable there (never with the Niconico comments).
+//    down one side, and usable there, PMs too (never with the Niconico
+//    comments).
 //  - Lights down: dims everything around the video; a click outside it
 //    lifts the dark a little for a few seconds. The chat can have a lighter
 //    dark of its own, which stays as it is: then only a click outside both
@@ -1054,17 +1055,31 @@
   //  - links in messages are plain text, so a stray click can't open one.
   // The smiley in the box opens the channel's emotes (CyTube's own list is a
   // dialog on the page, which can't show in fullscreen): pick one, or search.
+  // Typing with nothing else being typed in goes straight into the box.
   // Hide chat puts it away for the rest of that fullscreen visit (the player
   // can be used again), leaving Show chat in chat's corner, with how many
-  // messages came in meanwhile. With "Dim when quiet" on (in the popup), it
-  // fades right back after a while with nothing new. Private messages stay
-  // in CyTube's own windows, outside fullscreen.
+  // messages came in meanwhile (and whether one mentioned you, or a PM came).
+  // New messages ease in; with "Fade old messages" on (in the popup), each
+  // one fades back on its own once it's had its time, so what's new stands
+  // out, and using the chat brings them all back up for a while.
+  //
+  // The chat's settings in the popup hold here too: coloured names (and the
+  // bar beside each message in its sender's colour), mentions and PMs
+  // highlighted, clicking names and emotes, and shrinking big emotes.
+  //
+  // Private messages: CyTube's own PM windows come along, in the bottom
+  // corner across from the chat. Each is a small pill with the person's
+  // name (lit up when something in it is unread); a click opens it into a
+  // small window and closes it again, and its × closes it for good, as in
+  // the page.
   //
   // Nothing runs while it just sits there: no timers but the controls' few
-  // seconds and the quiet wait, and no animation but the fades and slides.
+  // seconds and the fading, and no animation but the fades and slides.
 
   const HYBRID_CONTROLS_MS = 2500;
-  const HYBRID_REST_AFTER_MS = 15000;
+  // With "Fade old messages" on: how long a message stays bright, and how
+  // long the chat stays bright after being used.
+  const HYBRID_FADE_AFTER_MS = 15000;
   // How long the message box waits, in use but empty and untouched, before
   // it goes (see boxIdle).
   const HYBRID_BOX_IDLE_MS = 6000;
@@ -1108,6 +1123,22 @@
     hybrid.root.style.setProperty("--cp-hybrid-opacity", hybridOpacity());
     hybrid.root.style.setProperty("--cp-hybrid-scale", hybridTextScale());
     for (const div of chatBuffer()?.children ?? []) markSender(div);
+    // Fade old messages, turned on (or the chat just up): what's already
+    // there is old news; turned off, nothing fades.
+    const fades = !!settings.hybridDims;
+    if (hybrid.fades !== fades) {
+      hybrid.fades = fades;
+      hybrid.root.classList.toggle("cp-hybrid-fades", fades);
+      clearTimeout(hybrid.ageTimer);
+      hybrid.ageTimer = 0;
+      hybrid.aging = [];
+      hybrid.unseen = [];
+      for (const div of chatBuffer()?.children ?? []) div.classList.toggle("cp-old", fades);
+      if (!fades) {
+        clearTimeout(hybrid.restTimer);
+        hybrid.root.classList.remove("cp-awake");
+      }
+    }
     wakeChat();
   }
   document.addEventListener("fullscreenchange", updateHybrid);
@@ -1163,8 +1194,9 @@
     // Names are coloured to read against the chat's background in the page:
     // still that one while the chat's over the video (see findChatBackground).
     const chatBackground = findChatBackground();
-    hybrid = { root, title, toggle, chatBox, ac, chatBackground, moved: [], hidden: false, unread: 0, placeholder: false,
-      controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse", mute, muted: false, boxTimer: 0,
+    hybrid = { root, title, toggle, chatBox, ac, chatBackground, moved: [], hidden: false, unread: 0, mentioned: false,
+      pm: false, placeholder: false, controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse", mute,
+      muted: false, boxTimer: 0, fades: null, aging: [], ageTimer: 0, unseen: [],
       emoteBtn, picker, search, grid, pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null };
 
     // The messages, and the form the box is in (with the guest login, and
@@ -1173,6 +1205,10 @@
     const line = document.getElementById("chatline");
     const form = line?.closest("#chatwrap form") ?? (line?.closest("#chatwrap") ? line : null);
     if (form) moveInto(form, chatBox);
+    // CyTube's PM windows (it finds their bar by its id, so new ones come
+    // here too), under the emote picker.
+    const pmbar = document.getElementById("pmbar");
+    if (pmbar) moveInto(pmbar, root, picker);
     // Its emotes sized for over the video (see emoteLimit).
     sizeAllMessages();
     // Something to say it's a box, which CyTube's hasn't (taken off after).
@@ -1190,7 +1226,9 @@
     });
     on(root, "pointermove", (e) => { if (e.pointerType === "mouse") showControls(); });
     on(catcher, "click", tapVideo);
-    on(buffer, "scroll", wakeSoon, { passive: true });
+    // Scrolling it by hand wakes it (not CyTube following new messages down).
+    on(buffer, "wheel", wakeSoon, { passive: true });
+    on(buffer, "touchmove", wakeSoon, { passive: true });
     on(exit, "click", () => { document.exitFullscreen().catch(() => {}); });
     on(mute, "click", () => toPage({ action: "mute", on: !hybrid.muted }));
     on(toggle, "click", () => setChatHidden(!hybrid.hidden));
@@ -1199,6 +1237,7 @@
     on(chatBox, "keydown", sentFromBox);
     for (const type of ["focusin", "keydown", "input"]) on(chatBox, type, boxActive);
     on(document, "keydown", typeFromVideo);
+    if (pmbar) on(pmbar, "click", openedPm);
     on(emoteBtn, "click", () => setPickerOpen(!hybrid.pickerOpen));
     on(search, "input", () => drawEmotes(true));
     // Enter takes the first emote found; Escape closes the picker.
@@ -1240,14 +1279,20 @@
     clearTimeout(h.boxTimer);
     clearTimeout(h.controlsTimer);
     clearTimeout(h.restTimer);
-    const focused = h.chatBox.contains(document.activeElement) ? document.activeElement : null;
+    clearTimeout(h.ageTimer);
+    // Something being written (the message box, or a PM) is still being
+    // written once it's back.
+    const active = document.activeElement;
+    const focused = h.root.contains(active) && active.matches("input, textarea") ? active : null;
     for (const moved of h.moved) putBack(moved);
     if (h.placeholder) document.getElementById("chatline")?.removeAttribute("placeholder");
     h.root.remove();
+    const buffer = chatBuffer();
+    for (const div of buffer?.children ?? []) div.classList.remove("cp-new", "cp-old");
+    placePmWindows();
     // Back in the page: its emotes sized for the page again, the ones that
     // came in meanwhile too.
     sizeAllMessages();
-    const buffer = chatBuffer();
     if (buffer) buffer.scrollTop = buffer.scrollHeight;
     // Leaving fullscreen resizes the window first, so CyTube sized the chat
     // for the page while its box was still in here: once more, now it's back.
@@ -1257,17 +1302,30 @@
 
   // Each of the chat's own elements leaves a mark where it was, to go back
   // to exactly.
-  function moveInto(el, parent) {
+  function moveInto(el, parent, before = null) {
     const marker = document.createComment(" cytube-plus: hybrid chat ");
     el.before(marker);
-    parent.appendChild(el);
+    parent.insertBefore(el, before);
     hybrid.moved.push({ el, marker });
   }
 
   function putBack({ el, marker }) {
     if (marker.isConnected) marker.replaceWith(el);
-    // Its place gone (a channel's script redid the chat): in the chat, at least.
-    else (document.getElementById("chatwrap") ?? document.body).appendChild(el);
+    // Its place gone (a channel's script redid the page): in the chat (or
+    // for the PM windows, the page), at least.
+    else (el.id === "pmbar" ? document.body : document.getElementById("chatwrap") ?? document.body).appendChild(el);
+  }
+
+  // CyTube keeps an open PM window where it was in the row of them, from
+  // where that was the moment it opened (and keeps its place in the row with
+  // a stand-in). Opened over the video, or with others closed there since,
+  // that's wrong for the page: back in the page, each open one goes where its
+  // stand-in is, as CyTube would have put it.
+  function placePmWindows() {
+    for (const pm of document.querySelectorAll("#pmbar > .pm-panel")) {
+      const stand = pm.style.position === "absolute" && document.getElementById("pm-placeholder-" + pm.id.slice(3));
+      if (stand) pm.style.left = stand.offsetLeft - (parseFloat(getComputedStyle(stand).marginLeft) || 0) + "px";
+    }
   }
 
   // What's playing, as CyTube shows it above the video, without its
@@ -1286,7 +1344,7 @@
       setPickerOpen(false);
       return;
     }
-    const typingHere = hybrid.chatBox.contains(document.activeElement);
+    const typingHere = typingInHybrid();
     if (typingHere) document.activeElement.blur();
     if (hybrid.pointer !== "mouse" && !typingHere && hybrid.root.classList.contains("cp-controls")) hideControls();
     else showControls();
@@ -1320,16 +1378,26 @@
     hybrid.root.classList.remove("cp-controls");
   }
 
-  // Hide chat, and Show chat. Put away, it leaves the video to the player,
-  // and Show chat in its corner counts what's said meanwhile.
+  // Something being typed in over the video: the message box, or a PM.
+  function typingInHybrid() {
+    const active = document.activeElement;
+    return !!active && hybrid.root.contains(active) && active.matches("input, textarea");
+  }
+
+  // Hide chat, and Show chat. Put away (the PM windows with it), it leaves
+  // the video to the player, and Show chat in its corner counts what's said
+  // meanwhile.
   function setChatHidden(hidden) {
     if (!hybrid) return;
     hybrid.hidden = hidden;
     hybrid.unread = 0;
+    hybrid.mentioned = false;
+    hybrid.pm = false;
     hybrid.root.classList.toggle("cp-chat-hidden", hidden);
     if (hidden) {
       setPickerOpen(false);
-      if (hybrid.chatBox.contains(document.activeElement)) document.activeElement.blur();
+      const active = document.activeElement;
+      if (active !== hybrid.toggle && hybrid.root.contains(active)) active.blur();
       hideControls();
     } else {
       const buffer = chatBuffer();
@@ -1361,10 +1429,21 @@
     hybrid.mute.setAttribute("aria-label", label);
   }
 
+  // Put away: Show chat, with how many messages came in meanwhile, lit up
+  // if one mentioned you (with Highlight mentions and PMs on), and saying
+  // so if a PM came.
   function updateToggle() {
     if (!hybrid) return;
-    const n = hybrid.unread;
-    hybrid.toggle.textContent = !hybrid.hidden ? "Hide chat" : n === 0 ? "Show chat" : `Show chat · ${n > 99 ? "99+" : n}`;
+    const { hidden, unread: n, toggle } = hybrid;
+    let text = "Hide chat";
+    if (hidden) {
+      text = "Show chat";
+      if (n) text += ` · ${n > 99 ? "99+" : n}`;
+      if (hybrid.pm) text += " · PM";
+    }
+    toggle.textContent = text;
+    toggle.classList.toggle("cp-mentioned", hidden && hybrid.mentioned);
+    toggle.classList.toggle("cp-pm", hidden && hybrid.pm);
   }
 
   // The message box in use but empty, and untouched for a while (clicked
@@ -1406,18 +1485,27 @@
     if (e.target.value === "" && hybrid.pointer !== "mouse") e.target.blur();
   }
 
-  // Enter, with nothing being typed in, goes to the message box (a button
-  // of its own still takes it). Not the Enter that sent a message from the
-  // box, on its way up: with a finger, that one has just put the keyboard
-  // away (see sentFromBox).
+  // Typing, with nothing being typed in, goes into the message box: the
+  // key's character lands there (into the emote search instead, while the
+  // emotes are open), and Enter just goes to the box. Not Space, which is
+  // for the video, nor a shortcut. A button of its own that's focused still
+  // takes Enter. Not the Enter that sent a message from the box, on its way
+  // up: with a finger, that one has just put the keyboard away (see
+  // sentFromBox).
   function typeFromVideo(e) {
-    if (e.key !== "Enter" || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
-    if (!hybrid || hybrid.hidden || typing() || hybrid.chatBox.contains(e.target)) return;
+    if (e.defaultPrevented || e.isComposing) return;
+    // (AltGr, for the characters it types, counts as Ctrl and Alt.)
+    if ((e.ctrlKey || e.altKey || e.metaKey) && !e.getModifierState("AltGraph")) return;
+    const enter = e.key === "Enter";
+    if (!enter && (e.key.length !== 1 || e.key === " ")) return;
+    if (!hybrid || hybrid.hidden || typing() || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     const active = document.activeElement;
-    if (active && hybrid.root.contains(active) && active.matches("button")) return;
-    const input = [...hybrid.chatBox.querySelectorAll("input")].find((i) => !i.disabled && i.offsetParent !== null);
+    if (enter && active && hybrid.root.contains(active) && active.matches("button")) return;
+    const input = hybrid.pickerOpen && !enter ? hybrid.search :
+      [...hybrid.chatBox.querySelectorAll("input")].find((i) => !i.disabled && i.offsetParent !== null);
     if (!input) return;
-    e.preventDefault();
+    // Enter only puts the box in use; a character goes on to be typed in it.
+    if (enter) e.preventDefault();
     input.focus();
   }
 
@@ -1430,15 +1518,19 @@
     hybrid.root.style.setProperty("--cp-keyboard", covered + "px");
   }
 
-  // The quiet wait (with "Dim when quiet" on) starts again with anything new
-  // or anything done with the chat; once it's over, the chat fades right
-  // back until either.
+  // Fade old messages (from the popup): each message bright for its first
+  // while, then it fades back on its own (content.css), so what's new stands
+  // out; a mention stays bright until the chat's been used since. Using the
+  // chat (moving the mouse, a tap, scrolling it, writing) brings them all
+  // back up, until it's been left alone a while.
   function wakeChat() {
-    if (!hybrid) return;
+    if (!hybrid || !hybrid.fades) return;
     hybrid.wokenAt = performance.now();
-    hybrid.root.classList.remove("cp-resting");
+    hybrid.root.classList.add("cp-awake");
     clearTimeout(hybrid.restTimer);
-    hybrid.restTimer = settings.hybridDims ? setTimeout(restChat, HYBRID_REST_AFTER_MS) : 0;
+    hybrid.restTimer = setTimeout(restChat, HYBRID_FADE_AFTER_MS);
+    // Mentions waiting to be seen have been, now (unless it's put away).
+    if (hybrid.unseen.length && !hybrid.hidden) ageLater(hybrid.unseen.splice(0));
   }
 
   function wakeSoon() {
@@ -1447,14 +1539,34 @@
 
   function restChat() {
     if (!hybrid) return;
-    // Not while it's in use: its controls up, or its box being written in.
+    // Not while it's in use: its controls up, or something being written.
     const root = hybrid.root;
     if (root.classList.contains("cp-controls") || root.classList.contains("cp-has-text") || hybrid.pickerOpen ||
-        hybrid.chatBox.contains(document.activeElement)) {
-      hybrid.restTimer = setTimeout(restChat, HYBRID_REST_AFTER_MS);
+        typingInHybrid()) {
+      hybrid.restTimer = setTimeout(restChat, HYBRID_FADE_AFTER_MS);
       return;
     }
-    root.classList.add("cp-resting");
+    root.classList.remove("cp-awake");
+  }
+
+  // Messages, each to fade once its time is up: one timer for them all, for
+  // the next one due (they come in order).
+  function ageLater(divs) {
+    if (!hybrid?.fades || !divs.length) return;
+    const due = performance.now() + HYBRID_FADE_AFTER_MS;
+    for (const div of divs) hybrid.aging.push([due, div]);
+    if (!hybrid.ageTimer) hybrid.ageTimer = setTimeout(ageDue, HYBRID_FADE_AFTER_MS);
+  }
+
+  function ageDue() {
+    if (!hybrid) return;
+    const now = performance.now();
+    const aging = hybrid.aging;
+    let n = 0;
+    // Those due within a moment of each other fade together.
+    while (n < aging.length && aging[n][0] <= now + 100) aging[n++][1].classList.add("cp-old");
+    aging.splice(0, n);
+    hybrid.ageTimer = aging.length ? setTimeout(ageDue, aging[0][0] - now) : 0;
   }
 
   // A person's message, not the server's (nor CyTube's own lines).
@@ -1472,14 +1584,51 @@
     else div.style.removeProperty("--cp-sender");
   }
 
-  // New messages while it's up: wake it, and while it's put away, count
-  // what people say (not the history CyTube replays) for Show chat.
-  function hybridHeard(said) {
-    if (hybrid.hidden && said) {
+  // New messages while it's up (not the history CyTube replays): each eases
+  // in, and starts its time (see ageLater). While it's put away, what people
+  // say is counted for Show chat, and a mention lights it up.
+  function hybridHeard(arrived) {
+    if (!arrived.length) return;
+    const aging = [];
+    let said = 0;
+    for (const div of arrived) {
+      div.classList.add("cp-new");
+      if (isPersonsMessage(div)) said++;
+      if (settings.highlights && div.classList.contains("nick-highlight")) {
+        if (hybrid.hidden) hybrid.mentioned = true;
+        if (hybrid.fades) hybrid.unseen.push(div);
+      } else {
+        aging.push(div);
+      }
+    }
+    ageLater(aging);
+    if (hybrid.hidden) {
       hybrid.unread += said;
       updateToggle();
     }
-    wakeChat();
+  }
+
+  // A PM window opened over the video (CyTube has just opened it: its own
+  // handler is on the name) starts at its newest message, rather than where
+  // CyTube leaves one that filled up while closed, at its oldest.
+  function openedPm(e) {
+    const heading = e.target instanceof Element && e.target.closest(".pm-panel > .panel-heading");
+    const buffer = heading && heading.parentElement.querySelector(".pm-buffer");
+    if (buffer?.offsetParent) buffer.scrollTop = buffer.scrollHeight;
+  }
+
+  // A private message come in while chat's put away: Show chat says so.
+  // (Its own window lights up as ever: CyTube does that.) Only someone
+  // else's, in the window CyTube keeps for them, not one sent from here.
+  function pmHeard(buffer, nodes) {
+    if (!hybrid?.hidden || hybrid.pm) return;
+    const them = buffer.closest(".pm-panel")?.id.slice("pm-".length).toLowerCase();
+    for (const div of nodes) {
+      if (!(div instanceof HTMLElement) || !them || senderOf(div).toLowerCase() !== them) continue;
+      hybrid.pm = true;
+      updateToggle();
+      return;
+    }
   }
 
   // ---- hybrid chat's emote picker
@@ -1736,6 +1885,7 @@
       for (const m of mutations) {
         if (!m.target.classList?.contains("pm-buffer")) continue;
         keepChatAtEnd(m.target, () => sizeMessages(m.addedNodes));
+        if (hybrid) pmHeard(m.target, m.addedNodes);
       }
     }).observe(bar, { childList: true, subtree: true });
   }
@@ -1745,21 +1895,21 @@
   function onMessages(nodes) {
     sizeMessages(nodes);
     const fresh = [];
-    let said = 0;      // new messages from people, for hybrid chat
+    const arrived = [];   // new messages, for hybrid chat
     for (const div of nodes) {
       if (!(div instanceof HTMLElement)) continue;
       if (settings.colourNames) colourName(div);
       const live = isLive(div);
       if (hybrid) {
         markSender(div);
-        if (live && isPersonsMessage(div)) said++;
+        if (live) arrived.push(div);
       }
       if (!live || !settings.nico || document.hidden) continue;
       const item = nicoContent(div);
       if (item) fresh.push(item);
     }
     if (fresh.length) enqueue(fresh.slice(-NICO_MAX_BURST));
-    if (hybrid) hybridHeard(said);
+    if (hybrid) hybridHeard(arrived);
   }
 
   function watchChat() {

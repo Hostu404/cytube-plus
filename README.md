@@ -22,7 +22,7 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   channels run smoothly.
 - **Coloured names**: each name in chat gets its own colour.
 - **Highlights**: messages that mention you, and private messages, stand
-  out. CyTube's own PM windows work as usual.
+  out, in hybrid chat too. CyTube's own PM windows work as usual.
 - **Lights down**: the bulb button under the video dims the rest of the
   page (90% by default). Click outside the video to lift the dark for a
   few seconds. How dark it goes and how long it lifts for (or whether it
@@ -46,21 +46,30 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   the left side (or the right: turn off **On the left** in the toolbar
   popup), and it works there as usual: scroll back, type, click names and
   emotes, and pick from the channel's emotes with the smiley in the
-  message box (with a search). The message box sits in the middle of the
-  bottom edge, and comes up with the title, **Hide chat**, a mute button
-  and a button to leave fullscreen when you click the video or move the
-  mouse; the video itself can't be clicked while the chat is up. (The mute
-  button isn't there for a custom embed, which can't be muted from the
-  page.) **Hide chat** puts it away and gives you the player back, and
-  **Show chat** brings it back with a count of what you missed. Messages
-  have a soft dark edge so they read over any picture, big emotes in them
-  are shrunk with **Shrink big emotes** (below), and links are plain text,
-  so a stray click can't open one. How big the text is (**Text size**,
-  80–200%) and how see-through it is (**Opacity**, 20–100%) can be changed
-  in the popup, and with **Dim when quiet** on it fades right back after
-  15 seconds without a new message. It and the Niconico comments turn each
-  other off. Private messages stay in their own windows, outside
-  fullscreen.
+  message box (with a search). Just start typing and it goes into the
+  message box. The box sits in the middle of the bottom edge, and comes
+  up with the title, **Hide chat**, a mute button and a button to leave
+  fullscreen when you click the video or move the mouse; the video itself
+  can't be clicked while the chat is up. (The mute button isn't there for
+  a custom embed, which can't be muted from the page.) Your chat settings
+  carry over: coloured names (with a bar beside each message in its
+  sender's colour), **Highlights** (a message that mentions you gets a
+  blue glow as it comes in), clicking names and emotes, and **Shrink big
+  emotes** (below). Private messages come along too: CyTube's PM windows
+  sit in the bottom corner across from the chat, each a small pill with
+  the person's name (lit up when there's something unread) that opens
+  into a small window with a click and closes again with another, and ×
+  closes it for good. **Hide chat** puts it all away and gives you the
+  player back, and **Show chat** brings it back with a count of what you
+  missed (lit up if someone mentioned you, and saying **PM** if a private
+  message came). New messages ease in, and have a soft dark edge so they
+  read over any picture; links are plain text, so a stray click can't
+  open one. How big the text is (**Text size**, 80–200%) and how
+  see-through it is (**Opacity**, 20–100%) can be changed in the popup,
+  and with **Fade old messages** on, each message fades back 15 seconds
+  after it comes in, so the new ones stand out; moving the mouse or
+  touching the chat brings them all back for a while, and a mention stays
+  bright until you have. It and the Niconico comments turn each other off.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. An emote shown with one of the
   channel's effects (a flip, a spin, one emote laid over another) comes
@@ -107,8 +116,9 @@ What's changed in each version is on the
   exceptions: while sync is off, the two handlers
   that move the video along with the room are wrapped, and they're put
   back as soon as you're in sync again; and while hybrid chat is up in
-  fullscreen, the chat's messages and its box are moved into the video,
-  and put back exactly where they were when you leave fullscreen.
+  fullscreen, the chat's messages, its box and the PM windows are moved
+  into the video, and put back exactly where they were when you leave
+  fullscreen.
 - If a channel's script already does something when a name is clicked, or
   colours a name itself, the add-on leaves that alone.
 

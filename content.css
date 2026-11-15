@@ -401,12 +401,6 @@
   }
 }
 
-/* Dim when quiet: faded right back, slowly. */
-.cp-hybrid.cp-resting .cp-hybrid-column {
-  opacity: calc(var(--cp-hybrid-opacity, 1) * 0.25);
-  transition: opacity 1200ms ease-in-out;
-}
-
 .cp-hybrid.cp-chat-hidden .cp-hybrid-column {
   opacity: 0;
   visibility: hidden;
@@ -417,8 +411,8 @@
 /* The messages: no background, but white with a soft dark edge round
    every letter, so they read over any picture. Against the screen's edge,
    each with a slim bar in its sender's colour down that edge (wider, and
-   blue, on one that mentions you). No times; links are plain text that a
-   click goes straight through. */
+   blue, on one that mentions you; see below for its highlight). No times;
+   links are plain text that a click goes straight through. */
 .cp-hybrid #messagebuffer {
   position: absolute !important;
   inset: auto 0 0 0 !important;
@@ -465,6 +459,8 @@
   color: #fff;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.8) !important;
   overflow-wrap: anywhere;
+  /* Faded back, with Fade old messages on (see below). */
+  opacity: var(--cp-age, 1);
 }
 
 /* Someone new: a little apart from the message before. */
@@ -488,7 +484,68 @@
 /* The server's own lines and CyTube's notices: no bar, and quieter. */
 .cp-hybrid #messagebuffer > div:is([class*="server-msg"], [class*="chat-msg-\\$"], .poll-notify) {
   box-shadow: none !important;
-  opacity: 0.8;
+  opacity: calc(0.8 * var(--cp-age, 1));
+}
+
+/* Each new message eases in, a little way up, rather than popping in. */
+.cp-hybrid #messagebuffer > div.cp-new {
+  animation: cp-hybrid-arrive 260ms ease-out;
+}
+
+@keyframes cp-hybrid-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* With Highlight mentions and PMs on, a message that mentions you also has
+   a blue wash from the screen's edge, which glows brighter for a moment as
+   it comes in. (The glow is a number the wash is drawn with, eased from 1
+   to 0; a browser that can't ease it shows the brighter wash for a moment
+   instead.) */
+@property --cp-glow {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight {
+  background: linear-gradient(to left, rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
+}
+
+.cytube-plus-highlight .cp-hybrid-left #messagebuffer > div.nick-highlight {
+  background: linear-gradient(to right, rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
+}
+
+.cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight.cp-new {
+  animation: cp-hybrid-arrive 260ms ease-out, cp-hybrid-mention 2400ms ease-out;
+}
+
+@keyframes cp-hybrid-mention {
+  from {
+    --cp-glow: 1;
+  }
+  to {
+    --cp-glow: 0;
+  }
+}
+
+/* Fade old messages (from the popup; content.js marks each one .cp-old once
+   its time is up): it fades back, slowly, on its own. Using the chat (.cp-awake)
+   brings them all back up, quicker. A mention that's not been seen yet is
+   never marked. */
+.cp-hybrid-fades #messagebuffer > div {
+  transition: opacity 1500ms ease-in-out;
+}
+
+.cp-hybrid-fades #messagebuffer > div.cp-old {
+  --cp-age: 0.35;
+}
+
+.cp-hybrid-fades.cp-awake #messagebuffer > div.cp-old {
+  --cp-age: 1;
+  transition-duration: 300ms;
 }
 
 .cp-hybrid #messagebuffer .timestamp {
@@ -636,6 +693,23 @@
 
 .cp-hybrid.cp-chat-hidden .cp-hybrid-toggle:is(:hover, :focus-visible) {
   opacity: 1;
+}
+
+/* Something for you came in meanwhile, a PM (or, with Highlight mentions
+   and PMs on, a mention): Show chat isn't quiet, and with highlights on
+   it's lit up in their colour, blue for a mention, amber for a PM. */
+.cp-hybrid.cp-chat-hidden .cp-hybrid-toggle:is(.cp-mentioned, .cp-pm) {
+  opacity: 1;
+}
+
+.cytube-plus-highlight .cp-hybrid.cp-chat-hidden .cp-hybrid-toggle.cp-pm {
+  background: rgba(150, 108, 48, 0.85) !important;
+  color: #fff !important;
+}
+
+.cytube-plus-highlight .cp-hybrid.cp-chat-hidden .cp-hybrid-toggle.cp-mentioned {
+  background: rgba(52, 104, 160, 0.85) !important;
+  color: #fff !important;
 }
 
 /* The message box: one light pill in the middle of the bottom edge (above
@@ -885,4 +959,255 @@
 
 .cp-hybrid-box #newmessages-indicator-bghack {
   background: none !important;
+}
+
+/* ---- PMs over the video
+   CyTube's own PM windows, brought in while hybrid chat's up (content.js
+   moves their bar in here, and back after), so they work as ever: a click
+   on one's name opens or closes it, its × closes it for good, and Enter in
+   it sends. In the bottom corner across from the chat, in a row from the
+   corner (wrapping upward if there are more than fit), as far as the
+   message box. Closed, each is a small pill with the name, lit up while
+   something in it is unread (CyTube marks it so); open, a small dark
+   window, never so tall it reaches the controls. As see-through as the
+   chat (solid while one's being written in), and put away with it.
+   CyTube's own placing of an open one, and the stand-in that keeps its
+   place in the row, count for nothing in here. */
+.cp-hybrid #pmbar {
+  position: absolute !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: calc(12px + var(--cp-keyboard, 0px)) !important;
+  left: 12px !important;
+  z-index: auto !important;
+  display: flex !important;
+  /* Wrapping upward: the lines start at the bottom, which is then the start
+     of each line too (so flex-start keeps a pill down by the edge beside an
+     open window). */
+  flex-flow: row wrap-reverse;
+  align-items: flex-start;
+  gap: 6px;
+  width: calc((100% - var(--cp-hybrid-box)) / 2 - 24px) !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  opacity: var(--cp-hybrid-opacity, 1);
+  transition: opacity 200ms ease-out, visibility 0s;
+}
+
+.cp-hybrid-left #pmbar {
+  right: 12px !important;
+  left: auto !important;
+  flex-direction: row-reverse;
+}
+
+/* A narrow screen (a phone held upright) has no room beside the box: just
+   above it, across the screen, instead. */
+@media (max-width: 599px) {
+  .cp-hybrid #pmbar {
+    right: 12px !important;
+    bottom: calc(64px + var(--cp-keyboard, 0px)) !important;
+    left: 12px !important;
+    width: auto !important;
+  }
+}
+
+.cp-hybrid #pmbar:focus-within {
+  opacity: 1;
+}
+
+.cp-hybrid.cp-chat-hidden #pmbar {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease-in, visibility 0s linear 160ms;
+}
+
+.cp-hybrid #pmbar > .pm-panel {
+  --cp-pm-accent: rgba(255, 255, 255, 0.7);
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  flex: none;
+  width: auto !important;
+  max-width: min(170px, 100%);
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  box-shadow: none;
+  color: #fff !important;
+  overflow: hidden;
+  pointer-events: auto !important;
+  text-align: left;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.cytube-plus-highlight .cp-hybrid #pmbar > .pm-panel {
+  --cp-pm-accent: #d2a76b;
+}
+
+/* Open (CyTube shows its body): a window. */
+.cp-hybrid #pmbar > .pm-panel:has(> .panel-body:not([style*="none"])) {
+  width: min(260px, 100%) !important;
+  max-width: none;
+  border-radius: 14px !important;
+  background: rgba(16, 18, 22, 0.9) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.cp-hybrid #pmbar > .pm-panel-placeholder {
+  display: none !important;
+}
+
+/* The name (a click opens or closes it), and the ×, always in sight however
+   long the name. */
+.cp-hybrid #pmbar > .pm-panel > .panel-heading {
+  position: relative;
+  display: block !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 0 36px 0 14px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font: 600 13px/32px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  text-shadow: none !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.cp-hybrid #pmbar > .pm-panel:has(> .panel-body:not([style*="none"])) > .panel-heading {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.cp-hybrid #pmbar > .pm-panel > .panel-heading > .close {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  float: none !important;
+  display: block !important;
+  width: 26px !important;
+  height: 26px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  opacity: 0.7 !important;
+  text-shadow: none !important;
+  font: 400 18px/26px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cp-hybrid #pmbar > .pm-panel > .panel-heading > .close:is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  opacity: 1 !important;
+  outline: none;
+}
+
+/* Something unread in it: lit up, with a dot (amber, with Highlight
+   mentions and PMs on), and a soft ring going out from it as it lights. */
+.cp-hybrid #pmbar > .pm-panel.panel-primary {
+  border-color: var(--cp-pm-accent) !important;
+  animation: cp-hybrid-pm 1400ms ease-out;
+}
+
+.cp-hybrid #pmbar > .pm-panel.panel-primary > .panel-heading {
+  color: #fff !important;
+}
+
+.cp-hybrid #pmbar > .pm-panel.panel-primary > .panel-heading::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 7px 1px -3px;
+  border-radius: 50%;
+  background: var(--cp-pm-accent);
+  vertical-align: middle;
+}
+
+@keyframes cp-hybrid-pm {
+  from {
+    box-shadow: 0 0 0 0 var(--cp-pm-accent);
+  }
+  to {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+/* Open: its messages, and the box to write in. */
+.cp-hybrid #pmbar > .pm-panel > .panel-body {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+}
+
+.cp-hybrid #pmbar > .pm-panel > .panel-body > hr {
+  display: none !important;
+}
+
+.cp-hybrid #pmbar .pm-buffer {
+  height: auto !important;
+  max-height: max(48px, min(200px, calc(100vh - 180px - var(--cp-keyboard, 0px)))) !important;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  border: 0 !important;
+  background: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  color: #fff !important;
+  font-size: calc(14px * var(--cp-hybrid-scale, 1)) !important;
+  line-height: 1.4 !important;
+  overflow-wrap: anywhere;
+}
+
+.cp-hybrid #pmbar .pm-buffer .timestamp {
+  display: none !important;
+}
+
+.cp-hybrid #pmbar .pm-buffer a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none !important;
+}
+
+.cp-hybrid #pmbar .pm-buffer :is(img, video):not(.channel-emote) {
+  max-width: 100% !important;
+  max-height: 120px !important;
+}
+
+.cytube-plus-emotes .cp-hybrid #pmbar .pm-buffer :is(img, video).channel-emote {
+  max-width: 100% !important;
+}
+
+.cp-hybrid #pmbar .pm-input {
+  display: block;
+  width: 100% !important;
+  height: 36px !important;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #fff !important;
+  font: 14px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+
+.cp-hybrid #pmbar .pm-input:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
 }

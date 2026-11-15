@@ -487,18 +487,6 @@
   opacity: calc(0.8 * var(--cp-age, 1));
 }
 
-/* Each new message eases in, a little way up, rather than popping in. */
-.cp-hybrid #messagebuffer > div.cp-new {
-  animation: cp-hybrid-arrive 260ms ease-out;
-}
-
-@keyframes cp-hybrid-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
 /* With Highlight mentions and PMs on, a message that mentions you also has
    a blue wash from the screen's edge, which glows brighter for a moment as
    it comes in. (The glow is a number the wash is drawn with, eased from 1
@@ -518,8 +506,8 @@
   background: linear-gradient(to right, rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
 }
 
-.cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight.cp-new {
-  animation: cp-hybrid-arrive 260ms ease-out, cp-hybrid-mention 2400ms ease-out;
+.cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight.cp-mention-new {
+  animation: cp-hybrid-mention 2400ms ease-out;
 }
 
 @keyframes cp-hybrid-mention {
@@ -531,12 +519,12 @@
   }
 }
 
-/* Fade old messages (from the popup; content.js marks each one .cp-old once
-   its time is up): it fades back, slowly, on its own. Using the chat (.cp-awake)
-   brings them all back up, quicker. A mention that's not been seen yet is
-   never marked. */
+/* Fade old messages (from the popup; content.js marks each message .cp-old
+   15 seconds after it was posted): it fades back on its own. Scrolling the
+   chat (.cp-awake) brings them all back up, and they fade again 10 seconds
+   after. A mention that's not been seen yet is never marked. */
 .cp-hybrid-fades #messagebuffer > div {
-  transition: opacity 1500ms ease-in-out;
+  transition: opacity 1000ms ease-in-out;
 }
 
 .cp-hybrid-fades #messagebuffer > div.cp-old {

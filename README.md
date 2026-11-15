@@ -62,14 +62,15 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   closes it for good. **Hide chat** puts it all away and gives you the
   player back, and **Show chat** brings it back with a count of what you
   missed (lit up if someone mentioned you, and saying **PM** if a private
-  message came). New messages ease in, and have a soft dark edge so they
-  read over any picture; links are plain text, so a stray click can't
-  open one. How big the text is (**Text size**, 80–200%) and how
-  see-through it is (**Opacity**, 20–100%) can be changed in the popup,
-  and with **Fade old messages** on, each message fades back 15 seconds
-  after it comes in, so the new ones stand out; moving the mouse or
-  touching the chat brings them all back for a while, and a mention stays
-  bright until you have. It and the Niconico comments turn each other off.
+  message came). Messages have a soft dark edge so they read over any
+  picture, and links are plain text, so a stray click can't open one. How
+  big the text is (**Text size**, 80–200%) and how see-through it is
+  (**Opacity**, 20–100%) can be changed in the popup, and with **Fade old
+  messages** on, each message fades back 15 seconds after it was posted
+  (so when you go fullscreen, the older ones are already faded), and the
+  new ones stand out. Scrolling the chat brings them all back to read, and
+  they fade again 10 seconds after you stop; a mention stays bright until
+  you've scrolled. It and the Niconico comments turn each other off.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. An emote shown with one of the
   channel's effects (a flip, a spin, one emote laid over another) comes

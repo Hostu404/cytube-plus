@@ -1059,9 +1059,10 @@
   // Hide chat puts it away for the rest of that fullscreen visit (the player
   // can be used again), leaving Show chat in chat's corner, with how many
   // messages came in meanwhile (and whether one mentioned you, or a PM came).
-  // New messages ease in; with "Fade old messages" on (in the popup), each
-  // one fades back on its own once it's had its time, so what's new stands
-  // out, and using the chat brings them all back up for a while.
+  // With "Fade old messages" on (in the popup), each message fades back 15
+  // seconds after it was posted (so going fullscreen, the older ones are
+  // faded already), and what's new stands out; scrolling the chat brings
+  // them all back up, to read, until 10 seconds after you stop.
   //
   // The chat's settings in the popup hold here too: coloured names (and the
   // bar beside each message in its sender's colour), mentions and PMs
@@ -1077,14 +1078,15 @@
   // seconds and the fading, and no animation but the fades and slides.
 
   const HYBRID_CONTROLS_MS = 2500;
-  // With "Fade old messages" on: how long a message stays bright, and how
-  // long the chat stays bright after being used.
+  // With "Fade old messages" on: how long after it's posted a message stays
+  // bright, and how long they all stay bright after you last scrolled the
+  // chat (time to read).
   const HYBRID_FADE_AFTER_MS = 15000;
+  const HYBRID_AWAKE_MS = 10000;
   // How long the message box waits, in use but empty and untouched, before
   // it goes (see boxIdle).
   const HYBRID_BOX_IDLE_MS = 6000;
-  // Using the chat (the mouse over it, scrolling it) wakes it, at most this
-  // often.
+  // Scrolling the chat wakes it, at most this often.
   const HYBRID_WAKE_EVERY_MS = 500;
   // The emote picker puts this many emotes in at a time, and more as it's
   // scrolled down to them (a channel can have thousands).
@@ -1093,6 +1095,11 @@
   // While it's up: its elements, where the chat's own came from, and how
   // it's doing. See mountHybrid.
   let hybrid = null;
+
+  // When each message came in, as it was posted (while hybrid chat is on in
+  // the popup, up or not), for Fade old messages. History CyTube replays
+  // has none: it's old.
+  const postedAt = new WeakMap();
 
   // How see-through it is (20-100%, from the popup), for content.css: 1 is
   // solid.
@@ -1123,23 +1130,26 @@
     hybrid.root.style.setProperty("--cp-hybrid-opacity", hybridOpacity());
     hybrid.root.style.setProperty("--cp-hybrid-scale", hybridTextScale());
     for (const div of chatBuffer()?.children ?? []) markSender(div);
-    // Fade old messages, turned on (or the chat just up): what's already
-    // there is old news; turned off, nothing fades.
+    syncFades();
+  }
+
+  // Fade old messages turned on (or the chat coming up with it on): what's
+  // there fades by when it was posted, the older ones at once. Turned off,
+  // nothing fades.
+  function syncFades() {
     const fades = !!settings.hybridDims;
-    if (hybrid.fades !== fades) {
-      hybrid.fades = fades;
-      hybrid.root.classList.toggle("cp-hybrid-fades", fades);
-      clearTimeout(hybrid.ageTimer);
-      hybrid.ageTimer = 0;
-      hybrid.aging = [];
-      hybrid.unseen = [];
-      for (const div of chatBuffer()?.children ?? []) div.classList.toggle("cp-old", fades);
-      if (!fades) {
-        clearTimeout(hybrid.restTimer);
-        hybrid.root.classList.remove("cp-awake");
-      }
-    }
-    wakeChat();
+    if (hybrid.fades === fades) return;
+    hybrid.fades = fades;
+    hybrid.root.classList.toggle("cp-hybrid-fades", fades);
+    hybrid.root.classList.remove("cp-awake");
+    clearTimeout(hybrid.restTimer);
+    clearTimeout(hybrid.ageTimer);
+    hybrid.ageTimer = 0;
+    hybrid.aging = [];
+    hybrid.unseen = [];
+    const divs = [...(chatBuffer()?.children ?? [])];
+    for (const div of divs) div.classList.remove("cp-old");
+    ageLater(divs);
   }
   document.addEventListener("fullscreenchange", updateHybrid);
 
@@ -1199,6 +1209,9 @@
       muted: false, boxTimer: 0, fades: null, aging: [], ageTimer: 0, unseen: [],
       emoteBtn, picker, search, grid, pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null };
 
+    // Old messages faded before they're first shown over the video, so
+    // they come in faded rather than fading as it opens.
+    syncFades();
     // The messages, and the form the box is in (with the guest login, and
     // CyTube's "New Messages Below", which it puts by the box).
     moveInto(buffer, column);
@@ -1220,13 +1233,11 @@
     buffer.scrollTop = buffer.scrollHeight;
 
     const on = (target, type, fn, options) => target.addEventListener(type, fn, { ...options, signal: ac.signal });
-    on(root, "pointerdown", (e) => {
-      hybrid.pointer = e.pointerType;
-      wakeSoon();
-    });
+    on(root, "pointerdown", (e) => { hybrid.pointer = e.pointerType; });
     on(root, "pointermove", (e) => { if (e.pointerType === "mouse") showControls(); });
     on(catcher, "click", tapVideo);
-    // Scrolling it by hand wakes it (not CyTube following new messages down).
+    // Scrolling the messages by hand (not CyTube following new ones down)
+    // wakes them (see wakeChat); the mouse moving, or a tap, doesn't.
     on(buffer, "wheel", wakeSoon, { passive: true });
     on(buffer, "touchmove", wakeSoon, { passive: true });
     on(exit, "click", () => { document.exitFullscreen().catch(() => {}); });
@@ -1288,7 +1299,7 @@
     if (h.placeholder) document.getElementById("chatline")?.removeAttribute("placeholder");
     h.root.remove();
     const buffer = chatBuffer();
-    for (const div of buffer?.children ?? []) div.classList.remove("cp-new", "cp-old");
+    for (const div of buffer?.children ?? []) div.classList.remove("cp-mention-new", "cp-old");
     placePmWindows();
     // Back in the page: its emotes sized for the page again, the ones that
     // came in meanwhile too.
@@ -1369,7 +1380,6 @@
     hybrid.shownAt = now;
     clearTimeout(hybrid.controlsTimer);
     hybrid.controlsTimer = setTimeout(hideControls, HYBRID_CONTROLS_MS);
-    wakeChat();
   }
 
   function hideControls() {
@@ -1405,7 +1415,6 @@
       showControls();
     }
     updateToggle();
-    wakeChat();
   }
 
   // The player's volume, from the page (sync-page.js): muted or not, and
@@ -1518,17 +1527,17 @@
     hybrid.root.style.setProperty("--cp-keyboard", covered + "px");
   }
 
-  // Fade old messages (from the popup): each message bright for its first
-  // while, then it fades back on its own (content.css), so what's new stands
-  // out; a mention stays bright until the chat's been used since. Using the
-  // chat (moving the mouse, a tap, scrolling it, writing) brings them all
-  // back up, until it's been left alone a while.
+  // Fade old messages (from the popup): each message fades back (content.css)
+  // 15 seconds after it was posted, so what's new stands out; a mention
+  // stays bright until you've scrolled the chat since. Scrolling it brings
+  // them all back up, to read, and they fade again 10 seconds after you
+  // stop.
   function wakeChat() {
-    if (!hybrid || !hybrid.fades) return;
+    if (!hybrid?.fades) return;
     hybrid.wokenAt = performance.now();
     hybrid.root.classList.add("cp-awake");
     clearTimeout(hybrid.restTimer);
-    hybrid.restTimer = setTimeout(restChat, HYBRID_FADE_AFTER_MS);
+    hybrid.restTimer = setTimeout(restChat, HYBRID_AWAKE_MS);
     // Mentions waiting to be seen have been, now (unless it's put away).
     if (hybrid.unseen.length && !hybrid.hidden) ageLater(hybrid.unseen.splice(0));
   }
@@ -1538,24 +1547,28 @@
   }
 
   function restChat() {
-    if (!hybrid) return;
-    // Not while it's in use: its controls up, or something being written.
-    const root = hybrid.root;
-    if (root.classList.contains("cp-controls") || root.classList.contains("cp-has-text") || hybrid.pickerOpen ||
-        typingInHybrid()) {
-      hybrid.restTimer = setTimeout(restChat, HYBRID_FADE_AFTER_MS);
-      return;
-    }
-    root.classList.remove("cp-awake");
+    hybrid?.root.classList.remove("cp-awake");
   }
 
-  // Messages, each to fade once its time is up: one timer for them all, for
-  // the next one due (they come in order).
+  // Messages, each to fade 15 seconds after it was posted: at once if that's
+  // past (or it's history, with no time), or else when it comes, all on one
+  // timer, for the next one due.
   function ageLater(divs) {
     if (!hybrid?.fades || !divs.length) return;
-    const due = performance.now() + HYBRID_FADE_AFTER_MS;
-    for (const div of divs) hybrid.aging.push([due, div]);
-    if (!hybrid.ageTimer) hybrid.ageTimer = setTimeout(ageDue, HYBRID_FADE_AFTER_MS);
+    const now = performance.now();
+    const aging = hybrid.aging;
+    for (const div of divs) {
+      const due = (postedAt.get(div) ?? -Infinity) + HYBRID_FADE_AFTER_MS;
+      if (due <= now) {
+        div.classList.add("cp-old");
+        continue;
+      }
+      let i = aging.length;
+      while (i > 0 && aging[i - 1][0] > due) i--;
+      aging.splice(i, 0, [due, div]);
+    }
+    clearTimeout(hybrid.ageTimer);
+    hybrid.ageTimer = aging.length ? setTimeout(ageDue, aging[0][0] - now) : 0;
   }
 
   function ageDue() {
@@ -1584,17 +1597,18 @@
     else div.style.removeProperty("--cp-sender");
   }
 
-  // New messages while it's up (not the history CyTube replays): each eases
-  // in, and starts its time (see ageLater). While it's put away, what people
-  // say is counted for Show chat, and a mention lights it up.
+  // New messages while it's up (not the history CyTube replays): each fades
+  // in its time (see ageLater), and a mention glows as it comes in. While
+  // it's put away, what people say is counted for Show chat, and a mention
+  // lights it up.
   function hybridHeard(arrived) {
     if (!arrived.length) return;
     const aging = [];
     let said = 0;
     for (const div of arrived) {
-      div.classList.add("cp-new");
       if (isPersonsMessage(div)) said++;
       if (settings.highlights && div.classList.contains("nick-highlight")) {
+        div.classList.add("cp-mention-new");
         if (hybrid.hidden) hybrid.mentioned = true;
         if (hybrid.fades) hybrid.unseen.push(div);
       } else {
@@ -1673,7 +1687,6 @@
       hybrid.grid.replaceChildren();
       hybrid.search.value = "";
     }
-    wakeChat();
   }
 
   // The emotes whose names have what's typed in the search in them: the
@@ -1900,6 +1913,7 @@
       if (!(div instanceof HTMLElement)) continue;
       if (settings.colourNames) colourName(div);
       const live = isLive(div);
+      if (live && settings.hybrid) postedAt.set(div, performance.now());
       if (hybrid) {
         markSender(div);
         if (live) arrived.push(div);

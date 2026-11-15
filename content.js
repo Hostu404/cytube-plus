@@ -1046,9 +1046,10 @@
   // completion, the box's history) and the add-on's clicks on names and
   // emotes work there as ever. While it's showing:
   //  - the video can't be clicked: a click, or moving the mouse, brings up
-  //    the controls (leave fullscreen, the title, Hide chat and the message
-  //    box) for a few seconds, and a tap brings them up or puts them away.
-  //    Nothing reaches the player;
+  //    the controls (leave fullscreen, mute, the title, Hide chat and the
+  //    message box) for a few seconds, and a tap brings them up or puts them
+  //    away. Nothing reaches the player, so the mute button is there instead
+  //    of its volume (sync-page.js mutes it);
   //  - Niconico comments are off (turning either on turns the other off);
   //  - links in messages are plain text, so a stray click can't open one.
   // The smiley in the box opens the channel's emotes (CyTube's own list is a
@@ -1064,6 +1065,9 @@
 
   const HYBRID_CONTROLS_MS = 2500;
   const HYBRID_REST_AFTER_MS = 15000;
+  // How long the message box waits, in use but empty and untouched, before
+  // it goes (see boxIdle).
+  const HYBRID_BOX_IDLE_MS = 6000;
   // Using the chat (the mouse over it, scrolling it) wakes it, at most this
   // often.
   const HYBRID_WAKE_EVERY_MS = 500;
@@ -1128,6 +1132,10 @@
     exit.title = "Leave fullscreen";
     exit.setAttribute("aria-label", "Leave fullscreen");
     exit.appendChild(pathIcon(EXIT_FULLSCREEN));
+    // Mute, beside leaving fullscreen: the video's two, in the far corner
+    // from the chat.
+    const mute = make("button", "cp-hybrid-mute");
+    mute.type = "button";
     const title = make("span", "cp-hybrid-title");
     const toggle = make("button", "cp-hybrid-toggle");
     toggle.type = "button";
@@ -1148,7 +1156,7 @@
     search.spellcheck = false;
     const grid = make("div", "cp-hybrid-emote-grid");
     picker.append(search, grid);
-    top.append(exit, title, toggle);
+    top.append(exit, mute, title, toggle);
     root.append(catcher, column, top, picker, chatBox);
     box.appendChild(root);
     const ac = new AbortController();
@@ -1156,7 +1164,7 @@
     // still that one while the chat's over the video (see findChatBackground).
     const chatBackground = findChatBackground();
     hybrid = { root, title, toggle, chatBox, ac, chatBackground, moved: [], hidden: false, unread: 0, placeholder: false,
-      controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse",
+      controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse", mute, muted: false, boxTimer: 0,
       emoteBtn, picker, search, grid, pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null };
 
     // The messages, and the form the box is in (with the guest login, and
@@ -1165,6 +1173,8 @@
     const line = document.getElementById("chatline");
     const form = line?.closest("#chatwrap form") ?? (line?.closest("#chatwrap") ? line : null);
     if (form) moveInto(form, chatBox);
+    // Its emotes sized for over the video (see emoteLimit).
+    sizeAllMessages();
     // Something to say it's a box, which CyTube's hasn't (taken off after).
     if (line && !line.placeholder) {
       line.placeholder = "Message";
@@ -1182,10 +1192,12 @@
     on(catcher, "click", tapVideo);
     on(buffer, "scroll", wakeSoon, { passive: true });
     on(exit, "click", () => { document.exitFullscreen().catch(() => {}); });
+    on(mute, "click", () => toPage({ action: "mute", on: !hybrid.muted }));
     on(toggle, "click", () => setChatHidden(!hybrid.hidden));
     on(chatBox, "focusin", showControls);
     on(chatBox, "input", markTyped);
     on(chatBox, "keydown", sentFromBox);
+    for (const type of ["focusin", "keydown", "input"]) on(chatBox, type, boxActive);
     on(document, "keydown", typeFromVideo);
     on(emoteBtn, "click", () => setPickerOpen(!hybrid.pickerOpen));
     on(search, "input", () => drawEmotes(true));
@@ -1214,6 +1226,7 @@
       placeOverKeyboard();
     }
     updateToggle();
+    updateMute();
     // The controls come up with the chat for a moment, so its box and Hide
     // chat are seen.
     showControls();
@@ -1224,12 +1237,16 @@
     hybrid = null;
     h.ac.abort();
     h.emoteWatch?.disconnect();
+    clearTimeout(h.boxTimer);
     clearTimeout(h.controlsTimer);
     clearTimeout(h.restTimer);
     const focused = h.chatBox.contains(document.activeElement) ? document.activeElement : null;
     for (const moved of h.moved) putBack(moved);
     if (h.placeholder) document.getElementById("chatline")?.removeAttribute("placeholder");
     h.root.remove();
+    // Back in the page: its emotes sized for the page again, the ones that
+    // came in meanwhile too.
+    sizeAllMessages();
     const buffer = chatBuffer();
     if (buffer) buffer.scrollTop = buffer.scrollHeight;
     // Leaving fullscreen resizes the window first, so CyTube sized the chat
@@ -1285,6 +1302,9 @@
       // Not logged in, there's the guest login instead of a message box, and
       // no emotes to put in it.
       hybrid.root.classList.toggle("cp-guest", !document.getElementById("chatline")?.offsetParent);
+      // Muted or not, as the player is now (a new video, or its own volume
+      // changed meanwhile), and whether it can be: answered at once.
+      toPage({ action: "volume" });
     } else if (now - hybrid.shownAt < 250) {
       return;   // a mouse moving: once in a while is plenty
     }
@@ -1320,10 +1340,54 @@
     wakeChat();
   }
 
+  // The player's volume, from the page (sync-page.js): muted or not, and
+  // whether this kind of player can be muted from here at all (a custom
+  // embed can't, and then there's no button).
+  document.addEventListener("cytube-plus:volume", (e) => {
+    if (!hybrid || typeof e.detail !== "string") return;
+    let state;
+    try { state = JSON.parse(e.detail); } catch (err) { return; }
+    if (!state || typeof state !== "object") return;
+    hybrid.muted = !!state.muted;
+    hybrid.root.classList.toggle("cp-hybrid-no-mute", !state.can);
+    updateMute();
+  });
+
+  function updateMute() {
+    if (!hybrid) return;
+    const label = hybrid.muted ? "Unmute" : "Mute";
+    hybrid.mute.replaceChildren(pathIcon(hybrid.muted ? MUTED : SOUND));
+    hybrid.mute.title = label;
+    hybrid.mute.setAttribute("aria-label", label);
+  }
+
   function updateToggle() {
     if (!hybrid) return;
     const n = hybrid.unread;
     hybrid.toggle.textContent = !hybrid.hidden ? "Hide chat" : n === 0 ? "Show chat" : `Show chat · ${n > 99 ? "99+" : n}`;
+  }
+
+  // The message box in use but empty, and untouched for a while (clicked
+  // into, or a message sent, and nothing more): it goes, as a click beside
+  // it would put it away, and with a finger the keyboard goes down with it.
+  // (Esc can't do this: the browser keeps it for leaving fullscreen.)
+  // Anything typed starts the wait again; something typed and not sent
+  // keeps it, as the emote picker being open does.
+  function boxActive() {
+    if (!hybrid) return;
+    clearTimeout(hybrid.boxTimer);
+    hybrid.boxTimer = setTimeout(boxIdle, HYBRID_BOX_IDLE_MS);
+  }
+
+  function boxIdle() {
+    if (!hybrid) return;
+    const active = document.activeElement;
+    if (!active || !hybrid.chatBox.contains(active) || hybrid.root.classList.contains("cp-has-text")) return;
+    if (hybrid.pickerOpen) {
+      boxActive();
+      return;
+    }
+    active.blur();
   }
 
   // Something typed and not yet sent keeps the box up, as being in it does.
@@ -1522,11 +1586,17 @@
 
   // Shrink big emotes: an emote taller than the limit shrinks to it, 36px
   // inside a message and 84px when the message is only emotes (up to 30).
-  // The limit is checked against the size the emote is shown at without
-  // this (CyTube's, or the channel's own), so nothing ever gets bigger: a
-  // small emote, or one the channel already shows small, stays as it is.
+  // In hybrid chat over the video, 32px and 56px, growing and shrinking
+  // with its text size: the same shrinking, so the one switch does both,
+  // and everything's sized again as the chat goes over the video and comes
+  // back (see mountHybrid). The limit is checked against the size the emote
+  // is shown at without this (CyTube's, or the channel's own), so nothing
+  // ever gets bigger: a small emote, or one the channel already shows
+  // small, stays as it is.
   const EMOTE_LIMIT = 36;
   const EMOTE_ONLY_LIMIT = 84;
+  const HYBRID_EMOTE_LIMIT = 32;
+  const HYBRID_EMOTE_ONLY_LIMIT = 56;
   const EMOTE_ONLY_MAX = 30;
   const EMOTES = "img.channel-emote, video.channel-emote";
 
@@ -1538,6 +1608,14 @@
     if (!emotes.length || emotes.length > EMOTE_ONLY_MAX || message.textContent.trim() !== "") return false;
     // Nothing else that shows: a posted picture, a link, a spoiler.
     return !message.querySelector("img:not(.channel-emote), video:not(.channel-emote), a, iframe, .spoiler");
+  }
+
+  // How tall [emote] may be: in a message, or on its own, in the page's
+  // chat or in hybrid chat.
+  function emoteLimit(emote) {
+    const only = !!emote.closest(".cp-emote-only");
+    if (!hybrid?.root.contains(emote)) return only ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
+    return Math.round((only ? HYBRID_EMOTE_ONLY_LIMIT : HYBRID_EMOTE_LIMIT) * Number(hybridTextScale()));
   }
 
   // Messages: each marked if it's only emotes, then all their emotes sized
@@ -1585,7 +1663,7 @@
     const shrink = [];
     const loading = [];
     for (const emote of emotes) {
-      const limit = emote.closest(".cp-emote-only") ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
+      const limit = emoteLimit(emote);
       const video = emote instanceof HTMLVideoElement;
       if (video ? emote.readyState < 1 : !emote.complete) {
         const own = parseFloat(getComputedStyle(emote).maxHeight);
@@ -2133,6 +2211,11 @@
   // Hybrid chat's emote picker: a smiling face.
   const SMILEY = "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20zM12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z" +
     "M8.5 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM15.5 8.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM7.5 14h9a4.5 4.5 0 0 1-9 0z";
+  // Hybrid chat's mute: a speaker, with its sound, or crossed out.
+  const SPEAKER = "M4 9h4l5-4.5v15L8 15H4z";
+  const SOUND = SPEAKER + "M16.82 8.18A5.4 5.4 0 0 1 16.82 15.82L15.4 14.4A3.4 3.4 0 0 0 15.4 9.6z" +
+    "M18.94 6.06A8.4 8.4 0 0 1 18.94 17.94L17.53 16.53A6.4 6.4 0 0 0 17.53 7.47z";
+  const MUTED = SPEAKER + "M15.2 9.6l1.4-1.4 2.4 2.4 2.4-2.4 1.4 1.4-2.4 2.4 2.4 2.4-1.4 1.4-2.4-2.4-2.4 2.4-1.4-1.4 2.4-2.4z";
   // Leaving fullscreen: four corners, pointing in.
   const EXIT_FULLSCREEN = "M8 3h2v7H3V8h5zm6 0h2v5h5v2h-7zM3 14h7v7H8v-5H3zm11 0h7v2h-5v5h-2z";
   const SVG_NS = "http://www.w3.org/2000/svg";

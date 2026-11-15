@@ -47,18 +47,20 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   popup), and it works there as usual: scroll back, type, click names and
   emotes, and pick from the channel's emotes with the smiley in the
   message box (with a search). The message box sits in the middle of the
-  bottom edge, and comes up with the title, **Hide chat** and a button to
-  leave fullscreen when you click the video or move the mouse; the video
-  itself can't be clicked while the chat is up. **Hide chat** puts it away
-  and gives you the player back, and **Show chat** brings it back with a
-  count of what you missed. Messages have a soft dark edge so they read
-  over any picture, emotes in them are kept small, and links are plain
-  text, so a stray click can't open one. How big the text is
-  (**Text size**, 80–200%) and how see-through it is (**Opacity**,
-  20–100%) can be changed in the popup, and with **Dim when quiet** on it
-  fades right back after 15 seconds without a new message. It and the
-  Niconico comments turn each other off. Private messages stay in their
-  own windows, outside fullscreen.
+  bottom edge, and comes up with the title, **Hide chat**, a mute button
+  and a button to leave fullscreen when you click the video or move the
+  mouse; the video itself can't be clicked while the chat is up. (The mute
+  button isn't there for a custom embed, which can't be muted from the
+  page.) **Hide chat** puts it away and gives you the player back, and
+  **Show chat** brings it back with a count of what you missed. Messages
+  have a soft dark edge so they read over any picture, big emotes in them
+  are shrunk with **Shrink big emotes** (below), and links are plain text,
+  so a stray click can't open one. How big the text is (**Text size**,
+  80–200%) and how see-through it is (**Opacity**, 20–100%) can be changed
+  in the popup, and with **Dim when quiet** on it fades right back after
+  15 seconds without a new message. It and the Niconico comments turn each
+  other off. Private messages stay in their own windows, outside
+  fullscreen.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. An emote shown with one of the
   channel's effects (a flip, a spin, one emote laid over another) comes
@@ -67,7 +69,9 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 - **Shrink big emotes**: big emotes in chat are made smaller so the chat
   reads more easily: at most 36px tall inside a message, and 84px when a
   message is only emotes. Emotes smaller than that stay as CyTube (or the
-  channel) shows them: none ever gets bigger.
+  channel) shows them: none ever gets bigger. In hybrid chat it's 32px and
+  56px, growing and shrinking with its **Text size**, and with this off,
+  hybrid chat shows emotes as the channel does too.
 - **Turn off sync** (in the toolbar popup, off to start with): the video
   is yours to pause and skip around as you like. Click a title in the
   playlist, or in search results, and it plays just for you, from the

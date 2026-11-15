@@ -501,26 +501,20 @@
   pointer-events: none !important;
 }
 
-/* A posted picture stays small, and emotes do too: at most a line and a
-   bit in a message, and a little bigger when a message is only emotes
-   (both growing and shrinking with the text size). */
+/* A posted picture stays small. Emotes are only ever sized by Shrink big
+   emotes, with limits of their own here (see emoteLimit in content.js),
+   which also keeps a wide one inside the chat; with it off, they're left
+   exactly as the channel has them. */
 .cp-hybrid #messagebuffer :is(img, video):not(.channel-emote) {
   max-width: 100% !important;
   max-height: 120px !important;
 }
 
-.cp-hybrid #messagebuffer :is(img, video).channel-emote {
-  width: auto !important;
+.cytube-plus-emotes .cp-hybrid #messagebuffer :is(img, video).channel-emote {
   max-width: 100% !important;
-  max-height: calc(32px * var(--cp-hybrid-scale, 1)) !important;
-  object-fit: contain !important;
 }
 
-.cp-hybrid #messagebuffer > .cp-emote-only :is(img, video).channel-emote {
-  max-height: calc(56px * var(--cp-hybrid-scale, 1)) !important;
-}
-
-/* The controls' top row: leave fullscreen, the title and Hide chat, across
+/* The controls' top row: leave fullscreen, mute, the title and Hide chat, across
    the video as far as the chat (the other way round with chat on the left,
    so Hide chat is still beside it). Up for a few seconds after a click on
    the video or the mouse moving; in quickly, out slowly. Only its buttons
@@ -548,7 +542,7 @@
   transition: opacity 150ms ease, visibility 0s;
 }
 
-.cp-hybrid.cp-controls .cp-hybrid-top :is(.cp-hybrid-exit, .cp-hybrid-toggle) {
+.cp-hybrid.cp-controls .cp-hybrid-top :is(.cp-hybrid-exit, .cp-hybrid-mute, .cp-hybrid-toggle) {
   pointer-events: auto !important;
 }
 
@@ -570,7 +564,7 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-toggle) {
+.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-mute, .cp-hybrid-toggle) {
   flex: none;
   display: inline-flex !important;
   align-items: center;
@@ -585,20 +579,20 @@
   cursor: pointer;
 }
 
-.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-toggle):is(:hover, :focus-visible) {
+.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-mute, .cp-hybrid-toggle):is(:hover, :focus-visible) {
   background: rgba(0, 0, 0, 0.6) !important;
   color: #fff !important;
   outline: none;
 }
 
-.cp-hybrid .cp-hybrid-exit {
+.cp-hybrid :is(.cp-hybrid-exit, .cp-hybrid-mute) {
   width: 38px !important;
   height: 38px !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-.cp-hybrid-exit .cp-icon {
+:is(.cp-hybrid-exit, .cp-hybrid-mute) .cp-icon {
   width: 22px;
   height: 22px;
   margin: 0;
@@ -626,7 +620,12 @@
   transition: none;
 }
 
-.cp-hybrid.cp-chat-hidden :is(.cp-hybrid-exit, .cp-hybrid-title) {
+.cp-hybrid.cp-chat-hidden :is(.cp-hybrid-exit, .cp-hybrid-mute, .cp-hybrid-title) {
+  display: none !important;
+}
+
+/* A player that can't be muted from here (a custom embed): no mute. */
+.cp-hybrid.cp-hybrid-no-mute .cp-hybrid-mute {
   display: none !important;
 }
 

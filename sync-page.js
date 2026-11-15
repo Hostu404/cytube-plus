@@ -18,9 +18,10 @@
 // ("playerReady", as it does when it first loads), so it's back where the
 // room is at once.
 //
-// It also hands content.js the channel's emotes, for hybrid chat's emote
-// picker in fullscreen (where CyTube's own emote list can't show): see
-// tellEmotes.
+// It also does two things for hybrid chat in fullscreen, where the video
+// can't be clicked: it hands content.js the channel's emotes, for its emote
+// picker (CyTube's own emote list can't show there; see tellEmotes), and it
+// mutes and unmutes the video for its mute button (see setMuted).
 (() => {
   "use strict";
 
@@ -30,6 +31,7 @@
   const FROM_ADDON = "cytube-plus:sync";
   const TO_ADDON = "cytube-plus:sync-state";
   const EMOTES_TO_ADDON = "cytube-plus:emotes";
+  const VOLUME_TO_ADDON = "cytube-plus:volume";
   // The two lists a title can be picked from: the playlist, and search
   // results (the channel's library, or YouTube).
   const LISTS = "#queue, #library";
@@ -424,6 +426,60 @@
     }));
   }
 
+  // ---- muting -----------------------------------------------------------------
+
+  // With CyTube's own player calls (PLAYER.setVolume), as every player it has
+  // a volume for answers to; a custom embed (a page of someone else's) has
+  // none, and can't be muted from here. Unmuted, the volume from before comes
+  // back. CyTube itself carries a mute on to the next video, as it does the
+  // player's own mute button: it keeps the volume a video ended at.
+  let unmutedVolume = 0;
+
+  function canMute() {
+    const player = window.PLAYER;
+    return !!player && typeof player.setVolume === "function" && typeof player.getVolume === "function" &&
+      player.setVolume !== window.Player?.prototype?.setVolume;
+  }
+
+  function tellVolume(muted) {
+    document.dispatchEvent(new CustomEvent(VOLUME_TO_ADDON, {
+      detail: JSON.stringify({ can: canMute(), muted: !!muted }),
+    }));
+  }
+
+  // Whether it's muted now (a volume of 0), from the player itself, as it
+  // could have been changed some other way.
+  function checkVolume() {
+    if (!canMute()) return tellVolume(false);
+    try {
+      window.PLAYER.getVolume((v) => {
+        if (typeof v !== "number") return tellVolume(false);
+        if (v > 0) unmutedVolume = v;
+        tellVolume(v === 0);
+      });
+    } catch (err) {
+      tellVolume(false);
+    }
+  }
+
+  function setMuted(on) {
+    if (!canMute()) return tellVolume(false);
+    try {
+      window.PLAYER.getVolume((v) => {
+        if (on) {
+          if (typeof v === "number" && v > 0) unmutedVolume = v;
+          window.PLAYER.setVolume(0);
+        } else {
+          const vol = window.VOLUME;
+          window.PLAYER.setVolume(unmutedVolume > 0 ? unmutedVolume : (vol > 0 && vol <= 1 ? vol : 1));
+        }
+        tellVolume(on);
+      });
+    } catch (err) {
+      tellVolume(false);
+    }
+  }
+
   // ---- talking to content.js -------------------------------------------------
 
   document.addEventListener(FROM_ADDON, (e) => {
@@ -443,6 +499,10 @@
       if (li) pickItem(li);
     } else if (msg.action === "emotes") {
       tellEmotes();
+    } else if (msg.action === "volume") {
+      checkVolume();
+    } else if (msg.action === "mute") {
+      setMuted(!!msg.on);
     }
   });
 

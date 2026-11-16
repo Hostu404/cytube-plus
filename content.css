@@ -339,6 +339,11 @@
   /* The chat's column, and the message box (see .cp-hybrid-box). */
   --cp-hybrid-col: clamp(240px, 32%, 420px);
   --cp-hybrid-box: clamp(220px, calc(100% - 2 * (var(--cp-hybrid-col) + 12px)), min(44%, 600px));
+  /* The screen's edge the chat's against, for the bars down it and a
+     mention's wash from it: the right (-1, an inset shadow's way of saying
+     so), or the left (1). */
+  --cp-hybrid-edge: -1;
+  --cp-hybrid-wash: to left;
   position: fixed !important;
   inset: 0 !important;
   z-index: 6 !important;
@@ -386,6 +391,11 @@
   opacity: var(--cp-hybrid-opacity, 1);
   transition: opacity 200ms ease-out, transform 240ms ease-out, visibility 0s;
   animation: cp-hybrid-in 240ms ease-out;
+}
+
+.cp-hybrid.cp-hybrid-left {
+  --cp-hybrid-edge: 1;
+  --cp-hybrid-wash: to right;
 }
 
 .cp-hybrid-left .cp-hybrid-column {
@@ -455,7 +465,7 @@
   border: 0 !important;
   border-radius: 0 !important;
   background: none !important;
-  box-shadow: inset -2px 0 0 var(--cp-sender, rgba(255, 255, 255, 0.45)) !important;
+  box-shadow: inset calc(2px * var(--cp-hybrid-edge)) 0 0 var(--cp-sender, rgba(255, 255, 255, 0.45)) !important;
   color: #fff;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.8) !important;
   overflow-wrap: anywhere;
@@ -469,16 +479,11 @@
 }
 
 .cp-hybrid #messagebuffer > div.nick-highlight {
-  box-shadow: inset -3px 0 0 #7fb2e5 !important;
+  box-shadow: inset calc(3px * var(--cp-hybrid-edge)) 0 0 #7fb2e5 !important;
 }
 
 .cp-hybrid-left #messagebuffer > div {
   padding: 1px 0 1px 10px !important;
-  box-shadow: inset 2px 0 0 var(--cp-sender, rgba(255, 255, 255, 0.45)) !important;
-}
-
-.cp-hybrid-left #messagebuffer > div.nick-highlight {
-  box-shadow: inset 3px 0 0 #7fb2e5 !important;
 }
 
 /* The server's own lines and CyTube's notices: no bar, and quieter. */
@@ -499,11 +504,7 @@
 }
 
 .cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight {
-  background: linear-gradient(to left, rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
-}
-
-.cytube-plus-highlight .cp-hybrid-left #messagebuffer > div.nick-highlight {
-  background: linear-gradient(to right, rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
+  background: linear-gradient(var(--cp-hybrid-wash), rgba(70, 135, 215, calc(0.36 + 0.3 * var(--cp-glow, 0))), rgba(70, 135, 215, 0) 90%) !important;
 }
 
 .cytube-plus-highlight .cp-hybrid #messagebuffer > div.nick-highlight.cp-mention-new {
@@ -520,9 +521,9 @@
 }
 
 /* Fade old messages (from the popup; content.js marks each message .cp-old
-   15 seconds after it was posted): it fades back on its own. Scrolling the
-   chat (.cp-awake) brings them all back up, and they fade again 10 seconds
-   after. A mention that's not been seen yet is never marked. */
+   15 seconds after it was posted, mentions too): it fades back on its own.
+   Scrolling the chat (.cp-awake) brings them all back up, and they fade
+   again 10 seconds after. */
 .cp-hybrid-fades #messagebuffer > div {
   transition: opacity 1000ms ease-in-out;
 }
@@ -536,11 +537,12 @@
   transition-duration: 300ms;
 }
 
-.cp-hybrid #messagebuffer .timestamp {
+/* In the chat and the PM windows alike: no times, and links plain text. */
+.cp-hybrid :is(#messagebuffer, #pmbar .pm-buffer) .timestamp {
   display: none !important;
 }
 
-.cp-hybrid #messagebuffer a {
+.cp-hybrid :is(#messagebuffer, #pmbar .pm-buffer) a {
   color: inherit !important;
   text-decoration: none !important;
   pointer-events: none !important;
@@ -550,12 +552,12 @@
    emotes, with limits of their own here (see emoteLimit in content.js),
    which also keeps a wide one inside the chat; with it off, they're left
    exactly as the channel has them. */
-.cp-hybrid #messagebuffer :is(img, video):not(.channel-emote) {
+.cp-hybrid :is(#messagebuffer, #pmbar .pm-buffer) :is(img, video):not(.channel-emote) {
   max-width: 100% !important;
   max-height: 120px !important;
 }
 
-.cytube-plus-emotes .cp-hybrid #messagebuffer :is(img, video).channel-emote {
+.cytube-plus-emotes .cp-hybrid :is(#messagebuffer, #pmbar .pm-buffer) :is(img, video).channel-emote {
   max-width: 100% !important;
 }
 
@@ -1159,25 +1161,6 @@
   font-size: calc(14px * var(--cp-hybrid-scale, 1)) !important;
   line-height: 1.4 !important;
   overflow-wrap: anywhere;
-}
-
-.cp-hybrid #pmbar .pm-buffer .timestamp {
-  display: none !important;
-}
-
-.cp-hybrid #pmbar .pm-buffer a {
-  color: inherit !important;
-  text-decoration: none !important;
-  pointer-events: none !important;
-}
-
-.cp-hybrid #pmbar .pm-buffer :is(img, video):not(.channel-emote) {
-  max-width: 100% !important;
-  max-height: 120px !important;
-}
-
-.cytube-plus-emotes .cp-hybrid #pmbar .pm-buffer :is(img, video).channel-emote {
-  max-width: 100% !important;
 }
 
 .cp-hybrid #pmbar .pm-input {

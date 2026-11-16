@@ -1101,16 +1101,15 @@
   // has none: it's old.
   const postedAt = new WeakMap();
 
-  // How see-through it is (20-100%, from the popup), for content.css: 1 is
-  // solid.
+  // How see-through it is (20-100%, from the popup): 1 is solid.
   function hybridOpacity() {
-    return String(clamp(settings.hybridOpacity ?? DEFAULTS.hybridOpacity, 20, 100) / 100);
+    return clamp(settings.hybridOpacity ?? DEFAULTS.hybridOpacity, 20, 100) / 100;
   }
 
-  // How big its messages are (80-200%, from the popup), for content.css: 1
-  // is the usual size. The emotes in them grow and shrink with the text.
+  // How big its messages are (80-200%, from the popup): 1 is the usual size.
+  // The emotes in them grow and shrink with the text.
   function hybridTextScale() {
-    return String(clamp(settings.hybridTextSize ?? DEFAULTS.hybridTextSize, 80, 200) / 100);
+    return clamp(settings.hybridTextSize ?? DEFAULTS.hybridTextSize, 80, 200) / 100;
   }
 
   // Up while it's on and CyTube's fullscreen (the video box) is.
@@ -1127,8 +1126,8 @@
     if (!hybrid) mountHybrid();
     if (!hybrid) return;
     hybrid.root.classList.toggle("cp-hybrid-left", !!settings.hybridLeft);
-    hybrid.root.style.setProperty("--cp-hybrid-opacity", hybridOpacity());
-    hybrid.root.style.setProperty("--cp-hybrid-scale", hybridTextScale());
+    hybrid.root.style.setProperty("--cp-hybrid-opacity", String(hybridOpacity()));
+    hybrid.root.style.setProperty("--cp-hybrid-scale", String(hybridTextScale()));
     for (const div of chatBuffer()?.children ?? []) markSender(div);
     syncFades();
   }
@@ -1146,7 +1145,6 @@
     clearTimeout(hybrid.ageTimer);
     hybrid.ageTimer = 0;
     hybrid.aging = [];
-    hybrid.unseen = [];
     const divs = [...(chatBuffer()?.children ?? [])];
     for (const div of divs) div.classList.remove("cp-old");
     ageLater(divs);
@@ -1204,10 +1202,21 @@
     // Names are coloured to read against the chat's background in the page:
     // still that one while the chat's over the video (see findChatBackground).
     const chatBackground = findChatBackground();
-    hybrid = { root, title, toggle, chatBox, ac, chatBackground, moved: [], hidden: false, unread: 0, mentioned: false,
-      pm: false, placeholder: false, controlsTimer: 0, shownAt: 0, restTimer: 0, wokenAt: 0, pointer: "mouse", mute,
-      muted: false, boxTimer: 0, fades: null, aging: [], ageTimer: 0, unseen: [],
-      emoteBtn, picker, search, grid, pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null };
+    hybrid = {
+      // Its elements, its listeners, and the chat's own moved in (see moveInto).
+      root, title, toggle, mute, chatBox, emoteBtn, picker, search, grid, ac, moved: [], placeholder: false,
+      chatBackground,
+      // Put away (Hide chat), and what's come in since, for Show chat.
+      hidden: false, unread: 0, mentioned: false, pm: false,
+      // The controls, the box, the last pointer used, the player's mute, and
+      // how far up a phone's keyboard comes.
+      controlsTimer: 0, shownAt: 0, boxTimer: 0, pointer: "mouse", muted: false, keyboard: 0,
+      // Fade old messages: on or not (null: not yet set), the messages still
+      // to fade and when, and the chat woken by scrolling.
+      fades: null, aging: [], ageTimer: 0, restTimer: 0, wokenAt: 0,
+      // The emote picker.
+      pickerOpen: false, emoteMatches: [], emotesShown: 0, emoteMore: null, emoteWatch: null,
+    };
 
     // Old messages faded before they're first shown over the video, so
     // they come in faded rather than fading as it opens.
@@ -1425,13 +1434,13 @@
     let state;
     try { state = JSON.parse(e.detail); } catch (err) { return; }
     if (!state || typeof state !== "object") return;
-    hybrid.muted = !!state.muted;
     hybrid.root.classList.toggle("cp-hybrid-no-mute", !state.can);
+    if (hybrid.muted === !!state.muted) return;
+    hybrid.muted = !!state.muted;
     updateMute();
   });
 
   function updateMute() {
-    if (!hybrid) return;
     const label = hybrid.muted ? "Unmute" : "Mute";
     hybrid.mute.replaceChildren(pathIcon(hybrid.muted ? MUTED : SOUND));
     hybrid.mute.title = label;
@@ -1524,22 +1533,21 @@
     const viewport = window.visualViewport;
     if (!hybrid || !viewport) return;
     const covered = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+    if (covered === hybrid.keyboard) return;
+    hybrid.keyboard = covered;
     hybrid.root.style.setProperty("--cp-keyboard", covered + "px");
   }
 
   // Fade old messages (from the popup): each message fades back (content.css)
-  // 15 seconds after it was posted, so what's new stands out; a mention
-  // stays bright until you've scrolled the chat since. Scrolling it brings
-  // them all back up, to read, and they fade again 10 seconds after you
-  // stop.
+  // 15 seconds after it was posted, mentions too, so what's new stands out.
+  // Scrolling the chat brings them all back up, to read, and they fade again
+  // 10 seconds after you stop.
   function wakeChat() {
     if (!hybrid?.fades) return;
     hybrid.wokenAt = performance.now();
     hybrid.root.classList.add("cp-awake");
     clearTimeout(hybrid.restTimer);
     hybrid.restTimer = setTimeout(restChat, HYBRID_AWAKE_MS);
-    // Mentions waiting to be seen have been, now (unless it's put away).
-    if (hybrid.unseen.length && !hybrid.hidden) ageLater(hybrid.unseen.splice(0));
   }
 
   function wakeSoon() {
@@ -1592,8 +1600,9 @@
   // content.css).
   function markSender(div) {
     if (!(div instanceof HTMLElement) || !isPersonsMessage(div)) return;
-    const sender = settings.colourNames ? senderOf(div) : "";
-    if (sender) div.style.setProperty("--cp-sender", nameColour(sender));
+    const colour = settings.colourNames ? nameColour(senderOf(div)) : "";
+    if (div.style.getPropertyValue("--cp-sender") === colour) return;
+    if (colour) div.style.setProperty("--cp-sender", colour);
     else div.style.removeProperty("--cp-sender");
   }
 
@@ -1603,20 +1612,16 @@
   // lights it up.
   function hybridHeard(arrived) {
     if (!arrived.length) return;
-    const aging = [];
     let said = 0;
     for (const div of arrived) {
       if (isPersonsMessage(div)) said++;
       if (settings.highlights && div.classList.contains("nick-highlight")) {
         div.classList.add("cp-mention-new");
         if (hybrid.hidden) hybrid.mentioned = true;
-        if (hybrid.fades) hybrid.unseen.push(div);
-      } else {
-        aging.push(div);
       }
     }
-    ageLater(aging);
-    if (hybrid.hidden) {
+    ageLater(arrived);
+    if (hybrid.hidden && said) {
       hybrid.unread += said;
       updateToggle();
     }
@@ -1777,7 +1782,7 @@
   function emoteLimit(emote) {
     const only = !!emote.closest(".cp-emote-only");
     if (!hybrid?.root.contains(emote)) return only ? EMOTE_ONLY_LIMIT : EMOTE_LIMIT;
-    return Math.round((only ? HYBRID_EMOTE_ONLY_LIMIT : HYBRID_EMOTE_LIMIT) * Number(hybridTextScale()));
+    return Math.round((only ? HYBRID_EMOTE_ONLY_LIMIT : HYBRID_EMOTE_LIMIT) * hybridTextScale());
   }
 
   // Messages: each marked if it's only emotes, then all their emotes sized

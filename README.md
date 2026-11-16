@@ -69,8 +69,8 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
   messages** on, each message fades back 15 seconds after it was posted
   (so when you go fullscreen, the older ones are already faded), and the
   new ones stand out. Scrolling the chat brings them all back to read, and
-  they fade again 10 seconds after you stop; a mention stays bright until
-  you've scrolled. It and the Niconico comments turn each other off.
+  they fade again 10 seconds after you stop. It and the Niconico comments
+  turn each other off.
 - **Click names and emotes**: click a name in chat to reply to that person,
   or an emote to add it to your message. An emote shown with one of the
   channel's effects (a flip, a spin, one emote laid over another) comes

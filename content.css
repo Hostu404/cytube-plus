@@ -480,8 +480,40 @@
   color: #fff;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.8) !important;
   overflow-wrap: anywhere;
+  /* A channel's own spacing for its messages (a height kept for an avatar,
+     tall lines) is left out over the video: the text size sets it here. */
+  min-height: 0 !important;
+  line-height: inherit !important;
   /* Faded back, with Fade old messages on (see below). */
   opacity: var(--cp-age, 1);
+}
+
+/* Something a channel's script pins beside a name (an avatar, a badge with
+   initials), in a space it keeps for it at the side of every message: that
+   space isn't kept here, so it goes in line before the name instead, the
+   size of the text (see markBadges in content.js). */
+.cp-hybrid #messagebuffer .cp-hybrid-badge {
+  position: static !important;
+  inset: auto !important;
+  float: none !important;
+  transform: none !important;
+  display: inline-block !important;
+  box-sizing: border-box !important;
+  width: calc(22px * var(--cp-hybrid-scale, 1)) !important;
+  height: calc(22px * var(--cp-hybrid-scale, 1)) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 0.35em 0 0 !important;
+  padding: 0 !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  object-fit: cover;
+  vertical-align: middle;
+  font-size: calc(10px * var(--cp-hybrid-scale, 1)) !important;
+  line-height: calc(22px * var(--cp-hybrid-scale, 1)) !important;
+  text-align: center;
 }
 
 /* Someone new: a little apart from the message before. */

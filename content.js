@@ -1129,7 +1129,9 @@
     hybrid.root.classList.toggle("cp-hybrid-left", !!settings.hybridLeft);
     hybrid.root.style.setProperty("--cp-hybrid-opacity", String(hybridOpacity()));
     hybrid.root.style.setProperty("--cp-hybrid-scale", String(hybridTextScale()));
-    for (const div of chatBuffer()?.children ?? []) markSender(div);
+    const messages = [...(chatBuffer()?.children ?? [])];
+    for (const div of messages) markSender(div);
+    markBadges(messages);
     syncFades();
   }
 
@@ -1607,6 +1609,28 @@
     else div.style.removeProperty("--cp-sender");
   }
 
+  // Whatever a channel's script pins beside a name (an avatar, a badge with
+  // initials) sits in a space it keeps at the side of every message, which
+  // hybrid chat doesn't keep: marked, it goes in line before the name (see
+  // .cp-hybrid-badge in content.css). Found by how it's placed, not by any
+  // one script's names for things, so a script that changes, or another
+  // one, is covered too. All looked at first, then all marked, so the page
+  // isn't restyled between one and the next.
+  function markBadges(divs) {
+    const badges = [];
+    for (const div of divs) {
+      if (!(div instanceof HTMLElement)) continue;
+      const name = div.querySelector(":scope > span > strong.username")?.parentElement;
+      if (!name) continue;
+      for (const el of name.children) {
+        if (el.tagName === "STRONG" || el.classList.contains("cp-hybrid-badge")) continue;
+        const style = getComputedStyle(el);
+        if (style.display !== "none" && (style.position === "absolute" || style.position === "fixed")) badges.push(el);
+      }
+    }
+    for (const el of badges) el.classList.add("cp-hybrid-badge");
+  }
+
   // New messages while it's up (not the history CyTube replays): each fades
   // in its time (see ageLater), and a mention glows as it comes in. While
   // it's put away, what people say is counted for Show chat, and a mention
@@ -1929,7 +1953,10 @@
       if (item) fresh.push(item);
     }
     if (fresh.length) enqueue(fresh.slice(-NICO_MAX_BURST));
-    if (hybrid) hybridHeard(arrived);
+    if (hybrid) {
+      markBadges(nodes);
+      hybridHeard(arrived);
+    }
   }
 
   function watchChat() {

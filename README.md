@@ -10,7 +10,7 @@ A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention 
 
 All settings are in the toolbar button's popup.
 
-- **Polished look:** the video, its buttons, the playlist, the poll and the chat become rounded cards. Chat gets quieter timestamps, and long messages wrap in their own column. The playing item is marked in the playlist, and poll results show as bars. The chat and private messages are also made lighter for the browser to draw.
+- **Polished look:** the video, its buttons, the playlist, the poll and the chat become rounded cards. Chat gets quieter timestamps, and long messages wrap in their own column (unless the channel lays out its chat its own way, for example with avatars). The playing item is marked in the playlist, and poll results show as bars. The chat and private messages are also made lighter for the browser to draw.
 - **Coloured names:** each name in chat gets its own colour.
 - **Highlights:** messages that mention you, and private messages, stand out.
 - **Lights down** (bulb button): dims everything but the video (90% by default). Click outside the video to lift the dark for a few seconds. **Dim the chat separately** gives the chat a lighter dark of its own that stays put, so it's always readable.

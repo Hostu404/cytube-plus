@@ -57,24 +57,29 @@ globalThis.CP_POLISHED_CSS = String.raw`
    wraps in its own column beside them, so a long one's second line starts
    under its first word, not under the time. Only on a chat wide enough for
    it (content.js sets .cytube-plus-wide-chat); a very long name wraps
-   itself rather than squeeze the message. */
-:where(.cytube-plus-wide-chat #messagebuffer > div:has(> .timestamp, > span > .username)) {
+   itself rather than squeeze the message.
+   Only for a message laid out as CyTube makes it: spans for the time, the
+   name and the message, and nothing beside the name but CyTube's own flair
+   icon. A channel's script that adds to it (an avatar by the name, say, or
+   anything that isn't a span) has a layout of its own in mind, so that
+   message is left as the channel has it. */
+:where(.cytube-plus-wide-chat #messagebuffer > div:not(:has(> :not(span), > span > :not(.glyphicon) + .username, > span > .username ~ *)):has(> .timestamp, > span > .username)) {
   display: flex;
   align-items: baseline;
 }
-:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(*) {
+:where(.cytube-plus-wide-chat #messagebuffer > div:not(:has(> :not(span), > span > :not(.glyphicon) + .username, > span > .username ~ *))) > :where(*) {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(.timestamp, span:has(> .username)) {
+:where(.cytube-plus-wide-chat #messagebuffer > div:not(:has(> :not(span), > span > :not(.glyphicon) + .username, > span > .username ~ *))) > :where(.timestamp, span:has(> .username)) {
   flex: none;
 }
-:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(.timestamp) {
+:where(.cytube-plus-wide-chat #messagebuffer > div:not(:has(> :not(span), > span > :not(.glyphicon) + .username, > span > .username ~ *))) > :where(.timestamp) {
   /* Its own space goes at the end of a flex item; the name keeps its. */
   margin-right: 0.3em;
   white-space: nowrap;
 }
-:where(.cytube-plus-wide-chat #messagebuffer > div) > :where(span:has(> .username)) {
+:where(.cytube-plus-wide-chat #messagebuffer > div:not(:has(> :not(span), > span > :not(.glyphicon) + .username, > span > .username ~ *))) > :where(span:has(> .username)) {
   max-width: 40%;
 }
 .timestamp:where(#messagebuffer *) {

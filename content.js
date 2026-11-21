@@ -83,6 +83,7 @@
     const wasNico = settings.nico;
     const offHere = offChannels.includes(channel);
     settings = offHere ? { ...ALL_OFF } : { ...DEFAULTS, ...saved };
+    document.documentElement.classList.toggle("cytube-plus-active", !offHere);
     if (offHere) removeButtons();
     else addButtons();
     applySettings(wasNico);

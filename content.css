@@ -2,7 +2,18 @@
    on how they're laid out keeps a channel's broad CSS (say, every div in the
    video area) from pushing them around. None of it reaches the channel's
    own elements, except the pointer over names and emotes, which has no
-   weight at all, so a channel's own cursor wins. */
+   weight at all, so a channel's own cursor wins, and an away user's menu
+   (see the user list, below). */
+
+/* The user list: a channel that fades away (AFK) users fades their whole
+   row, and CyTube puts the name's menu (Ignore User, Private Message) and
+   profile box inside the row, so they fade with it, see-through over the
+   names behind. While one is open the row is shown in full, so it can be
+   read; the rest of the time the channel's look is left as it is. */
+.cytube-plus-active #userlist .userlist_afk:has(> .user-dropdown:not([style*="none"]), > .profile-box) {
+  opacity: 1 !important;
+  filter: none !important;
+}
 
 /* Lights down: a box over the video whose shadow darkens everything else.
    Above the navbar (1030), below Bootstrap's dialogs (1040+), so an options

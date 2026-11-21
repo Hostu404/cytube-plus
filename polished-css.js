@@ -5,8 +5,8 @@
 // that wrap in their own column beside the time and name; the buttons under
 // the video become one flat bar; the playing item is marked in the
 // playlist; poll results show as bars (content.js sets each option's
-// --cp-share). And, with nothing to see, the chat, private messages,
-// playlist and search results become lighter for the browser to draw.
+// --cp-share). And, with nothing to see, the chat and private messages
+// become lighter for the browser to draw.
 //
 // It never outranks a channel's own CSS. content.js puts it straight after
 // CyTube's theme stylesheet, and the channel's CSS comes after it, so on

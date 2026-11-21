@@ -1,182 +1,46 @@
 # CyTube Plus
 
-A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments over the video, hybrid chat in fullscreen, click a name to reply or an emote to post it, and a switch to turn off sync and watch on your own. Unofficial.
+A Firefox and Chrome add-on for cytu.be: a tidier look, coloured names, mention highlights, lights down, Niconico-style comments, hybrid chat in fullscreen, and a switch to turn off sync and watch on your own. Unofficial.
 
-**Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (Firefox and Firefox for Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
+**Get it:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) (desktop and Android) · [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) (Chrome, Edge, Brave, Opera)
 
-## Screenshots
-<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
-
-
+<img width="1280" height="800" alt="CyTube Plus screenshot" src="https://github.com/user-attachments/assets/e868af0a-1489-4b5d-9e74-75ce1aa7e55b" />
 
 ## Features
 
-- **Polished look**: the video, the buttons under it, the playlist, the
-  poll and the chat become rounded, tidier cards, with quieter timestamps,
-  the playing item marked in the playlist and poll results shown as bars.
-  A long chat message wraps in its own column beside the time and name,
-  so its second line starts under its first word, not under the time
-  (on a chat wide enough for it). The rest of the page is left alone.
-  It also makes the chat, private messages and long playlists
-  less work for the browser to draw, which you can't see but helps busy
-  channels run smoothly.
-- **Coloured names**: each name in chat gets its own colour.
-- **Highlights**: messages that mention you, and private messages, stand
-  out, in hybrid chat too. CyTube's own PM windows work as usual.
-- **Lights down**: the bulb button under the video dims the rest of the
-  page (90% by default). Click outside the video to lift the dark for a
-  few seconds. How dark it goes and how long it lifts for (or whether it
-  lifts at all) can be changed in the toolbar popup. With **Dim the chat separately** on, the chat gets
-  a lighter dark of its own (40% by default, adjustable) that stays put,
-  so it's always readable. The rest of the page then lifts only for a
-  click outside both the video and the chat, not while you type. The
-  chat's header is dimmed with the page.
-- **Niconico comments**: the square button under the video makes new chat
-  messages fly across it, emotes included, and coloured text like
-  greentext keeps its colour. They show in fullscreen too, and their speed
-  can be changed in the toolbar popup (half to double), as can how
-  see-through the flying emotes are (**Emote opacity**, 10–100%). With **Emotes
-  only** on, just the emotes fly, and messages without one stay in chat;
-  with **Text only** on, the emotes are left out, and messages that are only
-  emotes stay in chat. Nothing is saved
-  up while the tab is hidden: only what's said while you're watching
-  flies.
-- **Hybrid chat**: the triangle button under the video puts the chat
-  itself over the video in fullscreen (CyTube's fullscreen button), down
-  the left side (or the right: turn off **On the left** in the toolbar
-  popup), and it works there as usual: scroll back, type, click names and
-  emotes, and pick from the channel's emotes with the smiley in the
-  message box (with a search). Just start typing and it goes into the
-  message box. The box sits in the middle of the bottom edge, and comes
-  up with the title, **Hide chat**, a mute button and a button to leave
-  fullscreen when you click the video or move the mouse; the video itself
-  can't be clicked while the chat is up. (The mute button isn't there for
-  a custom embed, which can't be muted from the page.) Your chat settings
-  carry over: coloured names (with a bar beside each message in its
-  sender's colour), **Highlights** (a message that mentions you gets a
-  blue glow as it comes in), clicking names and emotes, and **Shrink big
-  emotes** (below). Private messages come along too: CyTube's PM windows
-  sit in the bottom corner across from the chat, each a small pill with
-  the person's name (lit up when there's something unread) that opens
-  into a small window with a click and closes again with another, and ×
-  closes it for good. **Hide chat** puts it all away and gives you the
-  player back, and **Show chat** brings it back with a count of what you
-  missed (lit up if someone mentioned you, and saying **PM** if a private
-  message came). Messages have a soft dark edge so they read over any
-  picture, and links are plain text, so a stray click can't open one. How
-  big the text is (**Text size**, 80–200%) and how see-through it is
-  (**Opacity**, 20–100%) can be changed in the popup, and with **Fade old
-  messages** on, each message fades back 15 seconds after it was posted
-  (so when you go fullscreen, the older ones are already faded), and the
-  new ones stand out. Scrolling the chat brings them all back to read, and
-  they fade again 10 seconds after you stop. It and the Niconico comments
-  turn each other off.
-- **Click names and emotes**: click a name in chat to reply to that person,
-  or an emote to add it to your message. An emote shown with one of the
-  channel's effects (a flip, a spin, one emote laid over another) comes
-  with the effect, as it was typed, so yours looks the same. Nothing is
-  sent until you press Enter.
-- **Shrink big emotes**: big emotes in chat are made smaller so the chat
-  reads more easily: at most 36px tall inside a message, and 84px when a
-  message is only emotes. Emotes smaller than that stay as CyTube (or the
-  channel) shows them: none ever gets bigger. In hybrid chat it's 32px and
-  56px, growing and shrinking with its **Text size**, and with this off,
-  hybrid chat shows emotes as the channel does too.
-- **Turn off sync** (in the toolbar popup, off to start with): the video
-  is yours to pause and skip around as you like. Click a title in the
-  playlist, or in search results, and it plays just for you, from the
-  start; when it ends, the next one down plays, until the end of that
-  list. What you're watching is marked in amber in the list (the room's
-  video keeps its own mark), and the mark moves down as each one ends,
-  with the list scrolling along if you were watching it. The room carries
-  on without you, and a bar under the video says what you're watching and
-  what the room's on. If the channel hides its
-  playlist, a **Playlist** button on the bar opens a searchable list of it
-  to pick from instead. **Back in sync** on the bar
-  takes you straight back to the room's video, where the room is, and
-  turns the setting off again. Ctrl+click or a middle click still opens a
-  title's link in a new tab. The playlist leader stays in sync, as the
-  room follows their video.
-- **Blacklist**: the add-on does nothing at all on blacklisted channels.
-  The Kinoplex is blacklisted to start with. Channels can be added or
-  removed in the toolbar popup, which also has a switch for the channel
-  you're on.
+All settings are in the toolbar button's popup.
 
-All the settings are in the toolbar button's popup.
+- **Polished look:** the video, its buttons, the playlist, the poll and the chat become rounded cards. Chat gets quieter timestamps, and long messages wrap in their own column. The playing item is marked in the playlist, and poll results show as bars. The chat and private messages are also made lighter for the browser to draw.
+- **Coloured names:** each name in chat gets its own colour.
+- **Highlights:** messages that mention you, and private messages, stand out.
+- **Lights down** (bulb button): dims everything but the video (90% by default). Click outside the video to lift the dark for a few seconds. **Dim the chat separately** gives the chat a lighter dark of its own that stays put, so it's always readable.
+- **Niconico comments** (square button): new chat messages fly across the video, in fullscreen too. You can change their speed and the emotes' opacity, or choose **Emotes only** or **Text only**.
+- **Hybrid chat** (triangle button): in CyTube's fullscreen, the chat sits over the video on the left or right and works as usual. You can scroll, type, click names and emotes, use an emote picker, and use your PM windows. You can change the text size and opacity, and optionally fade old messages. Hybrid chat and Niconico comments turn each other off.
+- **Click names and emotes:** click a name to reply to that person, or an emote to add it to your message (with any effect it was shown with). Nothing is sent until you press Enter.
+- **Shrink big emotes:** in chat, emotes are capped at 36px inside a message and 84px when a message is only emotes. They're never made bigger.
+- **Turn off sync** (off by default): pause and skip the video yourself, or click a title in the playlist or search results to watch it just for you. Your pick is marked in amber, and the next item plays when it ends. A bar under the video shows what the room is on. **Back in sync** returns you to the room. If the channel hides its playlist, the bar has a searchable **Playlist** button.
+- **Blacklist:** the add-on does nothing on blacklisted channels. The Kinoplex is on the list to start with, and you can edit the list in the popup.
 
-What's changed in each version is on the
-[Releases page](https://github.com/Hostu404/cytube-plus/releases).
+Changes in each version are on the [Releases page](https://github.com/Hostu404/cytube-plus/releases).
 
 ## Staying out of the channel's way
 
-- A channel's own CSS always wins over the Polished look. (Coloured names
-  go over the channel's on purpose, and emote sizes can make a channel's
-  big emotes smaller, never bigger; both can be switched off.)
-- None of CyTube's code is changed, and the add-on's buttons sit in a group
-  of their own, so a channel's scripts find the page as they expect. The
-  exceptions: while sync is off, the two handlers
-  that move the video along with the room are wrapped, and they're put
-  back as soon as you're in sync again; and while hybrid chat is up in
-  fullscreen, the chat's messages, its box and the PM windows are moved
-  into the video, and put back exactly where they were when you leave
-  fullscreen.
-- If a channel's script already does something when a name is clicked, or
-  colours a name itself, the add-on leaves that alone.
+- A channel's own CSS always wins over the Polished look. Coloured names and emote shrinking override the channel's styling on purpose, and both can be turned off.
+- CyTube's own code is never changed, except for two things:
+  - **Turn off sync** wraps the two handlers that keep the video in step with the room, and puts them back when you're in sync again.
+  - **Hybrid chat** moves the chat and PM windows into the video while fullscreen is up, and puts them back when you leave fullscreen.
+- If a channel's script already does something when a name is clicked, or colours names itself, the add-on leaves that alone.
 
-## Installing on Firefox
+## Installing
 
-**From Firefox Add-ons** (recommended: it updates itself)
+**Firefox** (140+, or 142+ on Android): install from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/), which keeps it updated. You can also download the `.xpi` from the [Releases page](https://github.com/Hostu404/cytube-plus/releases) and drag it onto Firefox (or use `about:addons` → gear → **Install Add-on From File…**).
 
-Open the [CyTube Plus page on Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) in Firefox and
-click **Add to Firefox**. On Android, open the same page in Firefox for
-Android and tap **Add to Firefox**.
+**Chrome, Edge, Brave, Opera** (Chrome 120+): install from the [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim). If you installed an older copy from a GitHub zip, remove it on `chrome://extensions` so you don't have two.
 
-**From GitHub**
+If the buttons don't appear on a channel, check in your browser's extensions menu that the add-on is allowed on cytu.be.
 
-1. Download the `.xpi` file from the latest release on the
-   [Releases page](https://github.com/Hostu404/cytube-plus/releases).
-2. In Firefox, open `about:addons`, click the gear button and choose
-   **Install Add-on From File…**, then pick the `.xpi`. (Or drag the file
-   onto a Firefox window.)
-3. Click **Add** when Firefox asks.
+### From source
 
-To get updates automatically, install it from
-[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/cytube-plus/) instead.
-
-Needs Firefox 140 or newer (desktop) or 142 (Android).
-
-## Installing on Chrome, Edge, Brave or Opera
-
-**From the Chrome Web Store** (it updates itself)
-
-Open the [CyTube Plus page on the Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim) and click
-**Add to Chrome**. Edge, Brave and Opera install it from the same page
-(Edge and Opera may ask you to allow extensions from other stores first).
-
-Loaded it from a GitHub zip before it was on the store? Remove that copy
-on the extensions page (`chrome://extensions`) so you don't have two.
-
-Needs Chrome 120 or newer, or a browser built on it.
-
-## Once it's installed
-
-Open any cytu.be channel. If the buttons don't appear, open the add-on's
-menu in the toolbar's extensions panel and check it's allowed on cytu.be.
-
-## Installing from the source code
-
-This loads the add-on straight from this repository, without Mozilla's
-signing. Firefox removes it again when it closes, so it has to be loaded
-again each time Firefox starts.
-
-1. On this repository's page, click **Code → Download ZIP**, and extract
-   the zip.
-2. In Firefox, open `about:debugging#/runtime/this-firefox`.
-3. Click **Load Temporary Add-on…** and pick `manifest.json` in the
-   extracted folder.
-
-On Chrome, install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/cytube-plus/fedbnoemkdbdefpinnboennimglmicim).
-To load the source code there instead: the repository's `manifest.json`
-is Firefox's, so rename `manifest.chrome.json` to `manifest.json`
-(replacing it), turn on **Developer mode** on `chrome://extensions`, click
-**Load unpacked** and pick the folder.
+1. Click **Code → Download ZIP** and extract it.
+2. **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**, and pick `manifest.json`. It's removed again when Firefox closes.
+3. **Chrome:** rename `manifest.chrome.json` to `manifest.json`, replacing the Firefox one. Then turn on **Developer mode** on `chrome://extensions`, click **Load unpacked**, and pick the folder.
